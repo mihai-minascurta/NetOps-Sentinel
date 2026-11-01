@@ -2,7 +2,7 @@ groups:
   - name: netops-infrastructure
     rules:
     
-      - alert: NodeExporterDown
+      - alert: NodeExporterDown ######### Node Exporter Alert
         expr: up{job="netops-routers"} == 0
         for: 2m
         labels:
@@ -10,7 +10,7 @@ groups:
         annotations:
           summary: "Node Exporter indisponibil"
 
-      - alert: HighCPUUsage
+      - alert: HighCPUUsage ######### High CPU Usage Alert
         expr: |
           100 * (1 - avg by (router) (
             rate(node_cpu_seconds_total{
@@ -24,3 +24,33 @@ groups:
         annotations:
           summary: "CPU usage ridicat pe {{ $labels.router }}"
           description: "CPU usage a depășit 90% timp de 5 minute."
+
+      - alert: HighRAMUsage ######### High RAM Usage Alert
+        expr: |
+          100 * (
+            1 - node_memory_MemAvailable_bytes{job="netops-routers"}
+            / node_memory_MemTotal_bytes{job="netops-routers"}
+          ) > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "RAM usage ridicat pe {{ $labels.router }}"
+
+      - alert: HighDiskUsage ######### High Disk Usage Alert
+        expr: |
+          100 * (
+            1 - node_filesystem_avail_bytes{
+              job="netops-routers",
+              mountpoint="/"
+            }
+            / node_filesystem_size_bytes{
+              job="netops-routers",
+              mountpoint="/"
+            }
+          ) > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disk usage ridicat pe {{ $labels.router }}"
