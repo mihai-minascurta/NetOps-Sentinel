@@ -15,3 +15,6 @@ scrape_configs:
       - targets: ["192.168.122.195:9100"]
         labels:
           router: R2
+
+rule_files:
+  - /etc/prometheus/alerts.yml
