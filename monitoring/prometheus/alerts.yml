@@ -1,6 +1,7 @@
 groups:
   - name: netops-infrastructure
     rules:
+    
       - alert: NodeExporterDown
         expr: up{job="netops-routers"} == 0
         for: 2m
@@ -8,3 +9,18 @@ groups:
           severity: critical
         annotations:
           summary: "Node Exporter indisponibil"
+
+      - alert: HighCPUUsage
+        expr: |
+          100 * (1 - avg by (router) (
+            rate(node_cpu_seconds_total{
+              job="netops-routers",
+              mode="idle"
+            }[5m])
+          )) > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU usage ridicat pe {{ $labels.router }}"
+          description: "CPU usage a depășit 90% timp de 5 minute."
