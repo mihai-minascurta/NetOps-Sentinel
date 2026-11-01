@@ -1,0 +1,10 @@
+groups:
+  - name: netops-infrastructure
+    rules:
+      - alert: NodeExporterDown
+        expr: up{job="netops-routers"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Node Exporter indisponibil"
