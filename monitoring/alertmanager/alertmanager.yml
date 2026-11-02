@@ -7,3 +7,14 @@ route:
 
 receivers:
   - name: 'netops-default'
+    email_configs:
+      - to: 'officialminascurtamihai@gmail.com'
+        send_resolved: true
+
+global:
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'officialminascurtamihai@gmail.com'
+  smtp_auth_username: 'officialminascurtamihai@gmail.com'
+  smtp_auth_password_file: '/run/secrets/gmail_app_password'
+  smtp_require_tls: true
+

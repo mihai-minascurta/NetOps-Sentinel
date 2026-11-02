@@ -35,6 +35,7 @@ services:
     volumes:
       - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
       - alertmanager_data:/alertmanager
+      - ./secrets/gmail_app_password:/run/secrets/gmail_app_password:ro
     networks:
       - monitor-net
     restart: unless-stopped
