@@ -26,9 +26,23 @@ services:
     networks:
       - monitor-net
 
+  alertmanager:
+
+    image: prom/alertmanager:latest
+    container_name: netops-alertmanager
+    ports:
+      - "127.0.0.1:9093:9093"
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    networks:
+      - monitor-net
+    restart: unless-stopped
+
 volumes:
   prometheus_data:
   grafana_data:
+  alertmanager_data:
 
 networks:
   monitor-net:
