@@ -35,3 +35,34 @@ CREATE TABLE incident_alerts (
     FOREIGN KEY (incident_id) REFERENCES incidents (id),
     FOREIGN KEY (alert_id) REFERENCES alerts (id)
 );
+
+INSERT INTO incidents (status, severity, opened_at, closed_at, root_cause)
+VALUES ('open', 'critical', '2026-11-07T20:00:00Z', NULL, NULL); --already inserted
+
+INSERT INTO alerts (fingerprint, alertname, router, state, started_at, ended_at)
+VALUES ('r1-node-down-001', 'NodeExporterDown', 'R1', 'firing', '2026-11-07T20:00:00Z', NULL); --already inserted
+
+INSERT INTO incident_alerts (incident_id, alert_id)
+VALUES (1, 1); --already inserted
+
+SELECT incident_id , alert_id  FROM incident_alerts;
+
+SELECT incidents.id , incidents.status , alerts.alertname , alerts.router
+FROM incidents
+JOIN incident_alerts
+    ON incidents.id = incident_alerts.incident_id
+JOIN alerts
+    ON incident_alerts.alert_id = alerts.id
+WHERE incident_alerts.incident_id = 1; 
+
+UPDATE incidents
+SET status = 'investigating'
+WHERE id = 1;
+
+UPDATE incidents
+SET root_cause = 'Node Exporter service stopped on R1'
+WHERE id = 1;
+
+UPDATE incidents
+SET status = 'closed' , closed_at = datetime('now')
+WHERE id = 1;
