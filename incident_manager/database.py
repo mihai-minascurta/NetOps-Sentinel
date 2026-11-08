@@ -123,3 +123,57 @@ def get_incident(incident_id):
         return cursor.fetchone()
     finally:
         connection.close()
+
+ALLOWED_TRANSITIONS = {
+    "open": "investigating",
+    "investigating": "resolved",
+    "resolved": "closed",
+}
+
+
+def update_incident_status(incident_id, new_status):
+
+    connection = get_db_connection()
+
+    try:
+        row = connection.execute(
+            "SELECT status FROM incidents WHERE id = ?",
+            (incident_id,)
+        ).fetchone()
+
+        if row is None:
+            return {"success": False, "error": "incident_not_found"}
+
+        current_status = row[0]
+        allowed_status = ALLOWED_TRANSITIONS.get(current_status)
+
+        if allowed_status is None or new_status != allowed_status:
+            return {
+                "success": False,
+                "error": "invalid_transition",
+                "current_status": current_status,
+                "requested_status": new_status,
+            }
+
+        cursor = connection.execute(
+            "UPDATE incidents SET status = ? WHERE id = ? AND status = ?",
+            (new_status, incident_id, current_status)
+        )
+
+        if cursor.rowcount == 0:
+            return {"success": False, "error": "status_changed"}
+
+        connection.commit()
+        return {
+            "success": True,
+            "incident_id": incident_id,
+            "old_status": current_status,
+            "new_status": new_status,
+        }
+
+    except Exception:
+        connection.rollback()
+        raise
+
+    finally:
+        connection.close()

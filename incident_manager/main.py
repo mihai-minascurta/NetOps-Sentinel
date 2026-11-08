@@ -1,6 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from database import process_alert
-
+from database import process_alert , get_incident
 app = FastAPI(title="NetOps Sentinel - Incident Manager")
 
 VALID_STATES = {"firing", "resolved"}
@@ -90,4 +89,20 @@ def receive_alerts(data: dict):
         **counts,
         "skipped": skipped,
         "alerts": processed_alerts
+    }
+
+@app.get("/incidents/{incident_id}")
+def read_incident(incident_id: int):
+    incident = get_incident(incident_id)
+
+    if incident is None:
+        raise HTTPException(status_code=404, detail="Incident not found")
+
+    return {
+        "id": incident[0],
+        "status": incident[1],
+        "severity": incident[2],
+        "opened_at": incident[3],
+        "closed_at": incident[4],
+        "root_cause": incident[5],
     }
