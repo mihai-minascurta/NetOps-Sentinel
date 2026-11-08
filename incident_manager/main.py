@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from database import create_alert
+from database import save_alert
 
 app = FastAPI(title="NetOps Sentinel - Incident Manager")
 
@@ -68,7 +68,7 @@ def receive_alerts(data: dict):
         }
 
         #Here we will save alerts trough create_alert -> a function from database.py
-        create_alert(
+        save_alert(
             fingerprint=fingerprint,
             alertname=alertname,
             router=router,

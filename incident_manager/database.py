@@ -21,21 +21,45 @@ def get_incidents():
     finally:
         connection.close()
 
-
-def create_alert(fingerprint, alertname, router, status, started_at):
+def save_alert(fingerprint, alertname, router, status, started_at):
     connection = get_db_connection()
 
     try:
-        connection.execute(
+        cursor = connection.execute(
             """
-            INSERT INTO alerts
-                (fingerprint, alertname, router, state, started_at)
-            VALUES (?, ?, ?, ?, ?)
+            SELECT id, state
+            FROM alerts
+            WHERE fingerprint = ?
+              AND started_at = ?
             """,
-            (fingerprint, alertname, router, status, started_at),
+            (fingerprint, started_at)
         )
 
+        existing_alert = cursor.fetchone()
+
+        if existing_alert is None:
+            connection.execute(
+                """
+                INSERT INTO alerts
+                    (fingerprint, alertname, router, state, started_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (fingerprint, alertname, router, status, started_at)
+            )
+            action = "created"
+
+        elif existing_alert[1] != status:
+            connection.execute(
+                "UPDATE alerts SET state = ? WHERE id = ?",
+                (status, existing_alert[0])
+            )
+            action = "updated"
+
+        else:
+            action = "duplicate"
+
         connection.commit()
+        return action
 
     finally:
         connection.close()
