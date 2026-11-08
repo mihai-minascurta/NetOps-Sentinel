@@ -110,3 +110,16 @@ def process_alert(
 
     finally:
         connection.close()
+
+def get_incident(incident_id):
+
+    connection = get_db_connection()
+
+    try:
+        cursor = connection.execute(
+            "SELECT * FROM incidents WHERE id = ?",
+            (incident_id,)
+        )
+        return cursor.fetchone()
+    finally:
+        connection.close()
