@@ -21,7 +21,10 @@ def get_incidents():
     finally:
         connection.close()
 
-def save_alert(connection, fingerprint, alertname, router, status, started_at, ended_at=None):
+
+def save_alert(
+    connection, fingerprint, alertname, router, status, started_at, ended_at=None
+):
 
     cursor = connection.execute(
         """
@@ -29,7 +32,7 @@ def save_alert(connection, fingerprint, alertname, router, status, started_at, e
         FROM alerts
         WHERE fingerprint = ? AND started_at = ?
         """,
-        (fingerprint, started_at)
+        (fingerprint, started_at),
     )
 
     existing_alert = cursor.fetchone()
@@ -41,7 +44,7 @@ def save_alert(connection, fingerprint, alertname, router, status, started_at, e
                 (fingerprint, alertname, router, state, started_at, ended_at)
             VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (fingerprint, alertname, router, status, started_at, ended_at)
+            (fingerprint, alertname, router, status, started_at, ended_at),
         )
         return cursor.lastrowid, "created"
 
@@ -50,11 +53,12 @@ def save_alert(connection, fingerprint, alertname, router, status, started_at, e
     if old_status != status or old_ended_at != ended_at:
         connection.execute(
             "UPDATE alerts SET state = ?, ended_at = ? WHERE id = ?",
-            (status, ended_at, alert_id)
+            (status, ended_at, alert_id),
         )
         return alert_id, "updated"
 
     return alert_id, "duplicate"
+
 
 def create_incident_for_alert(connection, alert_id, severity, opened_at):
 
@@ -63,7 +67,7 @@ def create_incident_for_alert(connection, alert_id, severity, opened_at):
         INSERT INTO incidents (status, severity, opened_at)
         VALUES (?, ?, ?)
         """,
-        ("open", severity, opened_at)
+        ("open", severity, opened_at),
     )
 
     incident_id = cursor.lastrowid
@@ -73,42 +77,32 @@ def create_incident_for_alert(connection, alert_id, severity, opened_at):
         INSERT INTO incident_alerts (incident_id, alert_id)
         VALUES (?, ?)
         """,
-        (incident_id, alert_id)
+        (incident_id, alert_id),
     )
 
     return incident_id
 
-def process_alert(fingerprint, alertname, router, status, started_at, severity , ended_at=None):
+
+def process_alert(
+    fingerprint, alertname, router, status, started_at, severity, ended_at=None
+):
 
     connection = get_db_connection()
 
     try:
         alert_id, action = save_alert(
-            connection,
-            fingerprint,
-            alertname,
-            router,
-            status,
-            started_at ,
-            ended_at
+            connection, fingerprint, alertname, router, status, started_at, ended_at
         )
 
         incident_id = None
 
         if action == "created" and status == "firing":
             incident_id = create_incident_for_alert(
-                connection,
-                alert_id,
-                severity,
-                started_at
+                connection, alert_id, severity, started_at
             )
 
         connection.commit()
-        return {
-            "alert_id": alert_id,
-            "action": action,
-            "incident_id": incident_id
-        }
+        return {"alert_id": alert_id, "action": action, "incident_id": incident_id}
 
     except Exception:
         connection.rollback()
