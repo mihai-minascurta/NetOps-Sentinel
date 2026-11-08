@@ -1,7 +1,9 @@
+
 import sqlite3
 from pathlib import Path
-
 from fastapi import FastAPI, HTTPException
+
+
 
 DB_PATH = Path(__file__).parent / "data" / "incidents.db"
 
@@ -20,6 +22,7 @@ def receive_alerts(data: dict):
 
     processed_alerts = []
     skipped = 0
+    
 
     for alert in alerts:
         if not isinstance(alert, dict):

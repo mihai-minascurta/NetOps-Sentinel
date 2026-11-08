@@ -5,5 +5,5 @@ create_alert(
     alertname="NodeExporterDown",
     router="R2",
     status="firing",
-    started_at="2026-11-08T00:00:00Z"
+    started_at="2026-11-08T00:00:00Z",
 )
