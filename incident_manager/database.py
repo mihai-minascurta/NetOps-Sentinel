@@ -21,74 +21,93 @@ def get_incidents():
     finally:
         connection.close()
 
-def save_alert(fingerprint, alertname, router, status, started_at):
-    connection = get_db_connection()
+def save_alert(connection, fingerprint, alertname, router, status, started_at):
 
-    try:
+    cursor = connection.execute(
+        """
+        SELECT id, state
+        FROM alerts
+        WHERE fingerprint = ? AND started_at = ?
+        """,
+        (fingerprint, started_at)
+    )
+
+    existing_alert = cursor.fetchone()
+
+    if existing_alert is None:
         cursor = connection.execute(
             """
-            SELECT id, state
-            FROM alerts
-            WHERE fingerprint = ?
-              AND started_at = ?
+            INSERT INTO alerts
+                (fingerprint, alertname, router, state, started_at)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            (fingerprint, started_at)
+            (fingerprint, alertname, router, status, started_at)
         )
 
-        existing_alert = cursor.fetchone()
+        return cursor.lastrowid, "created"
 
-        if existing_alert is None:
-            connection.execute(
-                """
-                INSERT INTO alerts
-                    (fingerprint, alertname, router, state, started_at)
-                VALUES (?, ?, ?, ?, ?)
-                """,
-                (fingerprint, alertname, router, status, started_at)
-            )
-            action = "created"
+    alert_id, old_status = existing_alert
 
-        elif existing_alert[1] != status:
-            connection.execute(
-                "UPDATE alerts SET state = ? WHERE id = ?",
-                (status, existing_alert[0])
-            )
-            action = "updated"
-
-        else:
-            action = "duplicate"
-
-        connection.commit()
-        return action
-
-    finally:
-        connection.close()
-
-def create_incident_for_alert(alert_id, severity, opened_at):
-    
-    connection = get_db_connection()
-
-    try:
-        cursor = connection.execute(
-            """
-            INSERT INTO incidents (status, severity, opened_at)
-            VALUES (?, ?, ?)
-            """,
-            ("open", severity, opened_at)
-        )
-
-        incident_id = cursor.lastrowid
-
+    if old_status != status:
         connection.execute(
-            """
-            INSERT INTO incident_alerts (incident_id, alert_id)
-            VALUES (?, ?)
-            """,
-            (incident_id, alert_id)
+            "UPDATE alerts SET state = ? WHERE id = ?",
+            (status, alert_id)
+        )
+        return alert_id, "updated"
+
+    return alert_id, "duplicate"
+
+def create_incident_for_alert(connection, alert_id, severity, opened_at):
+    cursor = connection.execute(
+        """
+        INSERT INTO incidents (status, severity, opened_at)
+        VALUES (?, ?, ?)
+        """,
+        ("open", severity, opened_at)
+    )
+
+    incident_id = cursor.lastrowid
+
+    connection.execute(
+        """
+        INSERT INTO incident_alerts (incident_id, alert_id)
+        VALUES (?, ?)
+        """,
+        (incident_id, alert_id)
+    )
+
+    return incident_id
+
+def process_alert(fingerprint, alertname, router, status, started_at, severity):
+
+    connection = get_db_connection()
+
+    try:
+        alert_id, action = save_alert(
+            connection,
+            fingerprint,
+            alertname,
+            router,
+            status,
+            started_at
         )
 
+        incident_id = None
+
+        if action == "created" and status == "firing":
+            incident_id = create_incident_for_alert(
+                connection,
+                alert_id,
+                severity,
+                started_at
+            )
+
         connection.commit()
-        return incident_id
+        return {
+            "alert_id": alert_id,
+            "action": action,
+            "incident_id": incident_id
+        }
 
     except Exception:
         connection.rollback()
