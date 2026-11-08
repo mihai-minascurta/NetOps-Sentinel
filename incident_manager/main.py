@@ -66,7 +66,8 @@ def receive_alerts(data: dict):
             router=router,
             status=status,
             started_at=starts_at,
-            severity=severity
+            severity=severity ,
+            ended_at=ends_at
         )
         action = result["action"]
         counts[action] += 1
@@ -79,7 +80,7 @@ def receive_alerts(data: dict):
             "instance": instance,
             "status": status,
             "startsAt": starts_at,
-            "endsAt": alert.get("endsAt"),
+            "endsAt": ends_at,
             "action": action,
             "alert_id": result["alert_id"],
             "incident_id": result["incident_id"]
