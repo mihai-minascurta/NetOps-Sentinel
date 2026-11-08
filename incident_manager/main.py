@@ -23,6 +23,7 @@ def receive_alerts(data: dict):
         )
 
     processed_alerts = []
+    counts = {"created": 0, "updated": 0, "duplicate": 0}
     skipped = 0
 
     for alert in alerts:
@@ -52,11 +53,18 @@ def receive_alerts(data: dict):
             skipped += 1
             continue
 
-        router = labels.get("router") or ROUTERS.get(
-            instance, "unknown"
-        )
+        router = labels.get("router") or ROUTERS.get(instance, "unknown")
 
-        processed_alert = {
+        action = save_alert(
+            fingerprint=fingerprint,
+            alertname=alertname,
+            router=router,
+            status=status,
+            started_at=starts_at
+        )
+        counts[action] += 1
+
+        processed_alerts.append({
             "fingerprint": fingerprint,
             "alertname": alertname,
             "severity": labels.get("severity", "unknown"),
@@ -64,23 +72,13 @@ def receive_alerts(data: dict):
             "instance": instance,
             "status": status,
             "startsAt": starts_at,
-            "endsAt": alert.get("endsAt")
-        }
-
-        #Here we will save alerts trough create_alert -> a function from database.py
-        save_alert(
-            fingerprint=fingerprint,
-            alertname=alertname,
-            router=router,
-            status=status,
-            started_at=starts_at
-        )
-
-        processed_alerts.append(processed_alert)
+            "endsAt": alert.get("endsAt"),
+            "action": action
+        })
 
     return {
         "received": True,
-        "count": len(processed_alerts),
+        **counts,
         "skipped": skipped,
         "alerts": processed_alerts
     }
