@@ -1,5 +1,9 @@
 from fastapi import FastAPI, HTTPException
-from database import process_alert , get_incident
+
+from pydantic import BaseModel
+
+from database import process_alert , get_incident , update_incident_status
+
 app = FastAPI(title="NetOps Sentinel - Incident Manager")
 
 VALID_STATES = {"firing", "resolved"}
@@ -43,6 +47,7 @@ def receive_alerts(data: dict):
         starts_at = alert.get("startsAt")
         instance = labels.get("instance")
         ends_at = alert.get("endsAt")
+
         if not isinstance(ends_at, str) or ends_at.startswith("0001-01-01"):
             ends_at = None
 
@@ -106,3 +111,24 @@ def read_incident(incident_id: int):
         "closed_at": incident[4],
         "root_cause": incident[5],
     }
+
+class IncidentStatusUpdate(BaseModel):
+    status: str
+
+ERROR_STATUS_CODES = {
+    "incident_not_found": 404,
+    "invalid_transition": 409,
+    "status_changed": 409,
+}
+
+@app.patch("/incidents/{incident_id}/status")
+def update_status(incident_id: int, payload: IncidentStatusUpdate):
+
+    incident_update_status = update_incident_status(incident_id , payload.status)
+
+    if incident_update_status["success"]:
+        return incident_update_status
+
+
+    status_code = ERROR_STATUS_CODES.get(incident_update_status["error"], 400)
+    raise HTTPException(status_code=status_code, detail=incident_update_status)  
