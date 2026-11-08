@@ -1,4 +1,11 @@
+import sqlite3
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
+
+DB_PATH = Path(__file__).parent / "data" / "incidents.db"
+
+connection = sqlite3.connect("data/incidents.db")
 
 app = FastAPI(title="NetOps Sentinel - Incident Manager")
 
