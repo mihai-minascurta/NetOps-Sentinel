@@ -43,6 +43,9 @@ def receive_alerts(data: dict):
         status = alert.get("status")
         starts_at = alert.get("startsAt")
         instance = labels.get("instance")
+        ends_at = alert.get("endsAt")
+        if not isinstance(ends_at, str) or ends_at.startswith("0001-01-01"):
+            ends_at = None
 
         if (
             not fingerprint

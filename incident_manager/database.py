@@ -21,11 +21,11 @@ def get_incidents():
     finally:
         connection.close()
 
-def save_alert(connection, fingerprint, alertname, router, status, started_at):
+def save_alert(connection, fingerprint, alertname, router, status, started_at, ended_at=None):
 
     cursor = connection.execute(
         """
-        SELECT id, state
+        SELECT id, state, ended_at
         FROM alerts
         WHERE fingerprint = ? AND started_at = ?
         """,
@@ -38,27 +38,26 @@ def save_alert(connection, fingerprint, alertname, router, status, started_at):
         cursor = connection.execute(
             """
             INSERT INTO alerts
-                (fingerprint, alertname, router, state, started_at)
-            VALUES (?, ?, ?, ?, ?)
+                (fingerprint, alertname, router, state, started_at, ended_at)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (fingerprint, alertname, router, status, started_at)
+            (fingerprint, alertname, router, status, started_at, ended_at)
         )
-
         return cursor.lastrowid, "created"
 
-    alert_id, old_status = existing_alert
+    alert_id, old_status, old_ended_at = existing_alert
 
-    if old_status != status:
+    if old_status != status or old_ended_at != ended_at:
         connection.execute(
-            "UPDATE alerts SET state = ? WHERE id = ?",
-            (status, alert_id)
+            "UPDATE alerts SET state = ?, ended_at = ? WHERE id = ?",
+            (status, ended_at, alert_id)
         )
         return alert_id, "updated"
 
     return alert_id, "duplicate"
 
 def create_incident_for_alert(connection, alert_id, severity, opened_at):
-    
+
     cursor = connection.execute(
         """
         INSERT INTO incidents (status, severity, opened_at)
@@ -79,7 +78,7 @@ def create_incident_for_alert(connection, alert_id, severity, opened_at):
 
     return incident_id
 
-def process_alert(fingerprint, alertname, router, status, started_at, severity):
+def process_alert(fingerprint, alertname, router, status, started_at, severity , ended_at=None):
 
     connection = get_db_connection()
 
@@ -90,7 +89,8 @@ def process_alert(fingerprint, alertname, router, status, started_at, severity):
             alertname,
             router,
             status,
-            started_at
+            started_at ,
+            ended_at
         )
 
         incident_id = None
