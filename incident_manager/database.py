@@ -20,3 +20,22 @@ def get_incidents():
         return rows
     finally:
         connection.close()
+
+
+def create_alert(fingerprint, alertname, router, status, started_at):
+    connection = get_db_connection()
+
+    try:
+        connection.execute(
+            """
+            INSERT INTO alerts
+                (fingerprint, alertname, router, state, started_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (fingerprint, alertname, router, status, started_at),
+        )
+
+        connection.commit()
+
+    finally:
+        connection.close()
