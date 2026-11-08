@@ -63,3 +63,36 @@ def save_alert(fingerprint, alertname, router, status, started_at):
 
     finally:
         connection.close()
+
+def create_incident_for_alert(alert_id, severity, opened_at):
+    
+    connection = get_db_connection()
+
+    try:
+        cursor = connection.execute(
+            """
+            INSERT INTO incidents (status, severity, opened_at)
+            VALUES (?, ?, ?)
+            """,
+            ("open", severity, opened_at)
+        )
+
+        incident_id = cursor.lastrowid
+
+        connection.execute(
+            """
+            INSERT INTO incident_alerts (incident_id, alert_id)
+            VALUES (?, ?)
+            """,
+            (incident_id, alert_id)
+        )
+
+        connection.commit()
+        return incident_id
+
+    except Exception:
+        connection.rollback()
+        raise
+
+    finally:
+        connection.close()
