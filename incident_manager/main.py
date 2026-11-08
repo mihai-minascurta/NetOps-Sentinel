@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from database import save_alert
+from database import process_alert
 
 app = FastAPI(title="NetOps Sentinel - Incident Manager")
 
@@ -55,27 +55,32 @@ def receive_alerts(data: dict):
 
         router = labels.get("router") or ROUTERS.get(instance, "unknown")
 
-        action = save_alert(
+        severity = labels.get("severity", "unknown")
+
+        result = process_alert(
             fingerprint=fingerprint,
             alertname=alertname,
             router=router,
             status=status,
-            started_at=starts_at
+            started_at=starts_at,
+            severity=severity
         )
+        action = result["action"]
         counts[action] += 1
 
         processed_alerts.append({
             "fingerprint": fingerprint,
             "alertname": alertname,
-            "severity": labels.get("severity", "unknown"),
+            "severity": severity,
             "router": router,
             "instance": instance,
             "status": status,
             "startsAt": starts_at,
             "endsAt": alert.get("endsAt"),
-            "action": action
+            "action": action,
+            "alert_id": result["alert_id"],
+            "incident_id": result["incident_id"]
         })
-
     return {
         "received": True,
         **counts,

@@ -58,6 +58,7 @@ def save_alert(connection, fingerprint, alertname, router, status, started_at):
     return alert_id, "duplicate"
 
 def create_incident_for_alert(connection, alert_id, severity, opened_at):
+    
     cursor = connection.execute(
         """
         INSERT INTO incidents (status, severity, opened_at)
