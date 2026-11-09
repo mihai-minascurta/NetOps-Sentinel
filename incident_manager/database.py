@@ -1,5 +1,7 @@
 import sqlite3
 from pathlib import Path
+from datetime import datetime, timezone
+
 
 DB_PATH = Path(__file__).resolve().parent / "data" / "incidents.db"
 
@@ -155,10 +157,27 @@ def update_incident_status(incident_id, new_status):
                 "requested_status": new_status,
             }
 
-        cursor = connection.execute(
-            "UPDATE incidents SET status = ? WHERE id = ? AND status = ?",
-            (new_status, incident_id, current_status)
-        )
+        closed_at = None
+
+        if new_status == "closed":
+            closed_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            cursor = connection.execute(
+                """
+                UPDATE incidents
+                SET status = ?, closed_at = ?
+                WHERE id = ? AND status = ?
+                """,
+                (new_status, closed_at, incident_id, current_status)
+            )
+        else:
+            cursor = connection.execute(
+                """
+                UPDATE incidents
+                SET status = ?
+                WHERE id = ? AND status = ?
+                """,
+                (new_status, incident_id, current_status)
+            )
 
         if cursor.rowcount == 0:
             return {"success": False, "error": "status_changed"}
@@ -169,6 +188,7 @@ def update_incident_status(incident_id, new_status):
             "incident_id": incident_id,
             "old_status": current_status,
             "new_status": new_status,
+            "closed_at": closed_at,
         }
 
     except Exception:
