@@ -160,6 +160,7 @@ def update_incident_status(incident_id, new_status):
         closed_at = None
 
         if new_status == "closed":
+
             closed_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
             cursor = connection.execute(
                 """
@@ -170,6 +171,7 @@ def update_incident_status(incident_id, new_status):
                 (new_status, closed_at, incident_id, current_status)
             )
         else:
+            
             cursor = connection.execute(
                 """
                 UPDATE incidents
