@@ -11,6 +11,10 @@ receivers:
       - to: 'officialminascurtamihai@gmail.com'
         send_resolved: true
 
+    webhook_configs:
+      - url: 'http://172.18.0.1:8000/webhook/alerts'
+        send_resolved: true
+
 global:
   smtp_smarthost: 'smtp.gmail.com:587'
   smtp_from: 'officialminascurtamihai@gmail.com'
