@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 
 from pydantic import BaseModel
 
-from database import process_alert , get_incident , update_incident_status
+from database import process_alert , get_incident , update_incident_status , create_investigation
 
 app = FastAPI(title="NetOps Sentinel - Incident Manager")
 
@@ -132,3 +132,17 @@ def update_status(incident_id: int, payload: IncidentStatusUpdate):
 
     status_code = ERROR_STATUS_CODES.get(incident_update_status["error"], 400)
     raise HTTPException(status_code=status_code, detail=incident_update_status)  
+
+@app.post("/incidents/{incident_id}/investigations" , status_code=201)
+def create_investigation_incident(incident_id: int):
+
+    investigation_id = create_investigation(incident_id)
+
+    if investigation_id is None:
+        raise HTTPException(status_code=404 , detail="Incident not found")
+
+    return {"investigation_id" : investigation_id , "status": "running"}
+
+    
+
+    

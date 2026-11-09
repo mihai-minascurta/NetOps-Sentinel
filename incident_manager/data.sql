@@ -66,3 +66,24 @@ WHERE id = 1;
 UPDATE incidents
 SET status = 'closed' , closed_at = datetime('now')
 WHERE id = 1;
+
+#################### TWO MORE DB TABLES , investigations and evidences
+
+CREATE TABLE investigations (
+    id          INTEGER NOT NULL PRIMARY KEY,
+    incident_id INTEGER NOT NULL,
+    status      TEXT NOT NULL CHECK(status IN ('running', 'completed', 'failed')),
+    started_at  TEXT NOT NULL,
+    finished_at TEXT,
+    FOREIGN KEY (incident_id) REFERENCES incidents(id)
+);
+
+CREATE TABLE evidences (
+    id               INTEGER PRIMARY KEY,
+    investigation_id INTEGER NOT NULL,
+    check_type       TEXT NOT NULL,
+    status           TEXT NOT NULL CHECK(status IN ('success', 'failed', 'error')),
+    result           TEXT NOT NULL,
+    collected_at     TEXT NOT NULL,
+    FOREIGN KEY (investigation_id) REFERENCES investigations(id)
+);

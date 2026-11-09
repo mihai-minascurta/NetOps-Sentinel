@@ -171,7 +171,7 @@ def update_incident_status(incident_id, new_status):
                 (new_status, closed_at, incident_id, current_status)
             )
         else:
-            
+
             cursor = connection.execute(
                 """
                 UPDATE incidents
@@ -199,3 +199,40 @@ def update_incident_status(incident_id, new_status):
 
     finally:
         connection.close()
+
+def create_investigation(incident_id: int):
+
+    connection = get_db_connection()
+
+    try:
+        incident = connection.execute(
+            "SELECT id FROM incidents WHERE id = ?" ,
+            (incident_id,)
+
+        ).fetchone()
+
+        if incident is None:
+            return None
+
+        started_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        cursor = connection.execute(
+            """
+            INSERT INTO investigations(incident_id , status , started_at)
+            VALUES(? , ? , ?)
+            """,
+            (incident_id , "running" , started_at)
+
+        )
+
+        investigation_id = cursor.lastrowid
+
+        connection.commit()
+        return investigation_id
+    except Exception:
+        connection.rollback()
+        raise
+    
+    finally:
+        connection.close()
+
