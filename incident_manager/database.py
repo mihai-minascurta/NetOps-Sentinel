@@ -1,7 +1,7 @@
 import sqlite3
 from pathlib import Path
 from datetime import datetime, timezone
-
+import json
 
 DB_PATH = Path(__file__).resolve().parent / "data" / "incidents.db"
 
@@ -235,4 +235,33 @@ def create_investigation(incident_id: int):
     
     finally:
         connection.close()
+
+def save_evidence(investigation_id: int , check_type: str , status: str , result: dict):
+
+    connnection = get_db_connection()
+
+    try:
+
+        json_result = json.dumps(result)
+        collected_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        cursor = connnection.execute(
+            """
+            INSERT INTO evidences(investigation_id , check_type , status , result , collected_at)
+            VALUES(? , ? , ? , ?)
+            """,
+            (investigation_id , check_type , status , json_result , collected_at)
+        )
+
+        evidence_id = cursor.lastrowid
+
+        connnection.commit()
+        return evidence_id
+    
+    except Exception:
+        connnection.rollback()
+        raise
+    finally:
+        connnection.close()
+
 
