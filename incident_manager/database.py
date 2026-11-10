@@ -361,3 +361,28 @@ def finish_investigation(investigation_id: int, status: str):
 
     finally:
         connection.close()
+
+def get_incident_router(incident_id: int) -> str | None:
+    connection = get_db_connection()
+
+    try:
+        row = connection.execute(
+            """
+            SELECT a.router
+            FROM incidents AS i
+            JOIN incident_alerts AS ia
+                ON i.id = ia.incident_id
+            JOIN alerts AS a
+                ON ia.alert_id = a.id
+            WHERE i.id = ?
+            """,
+            (incident_id,)
+        ).fetchone()
+
+        if row is None:
+            return None
+
+        return row[0]
+
+    finally:
+        connection.close()

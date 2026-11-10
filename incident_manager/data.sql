@@ -87,3 +87,10 @@ CREATE TABLE evidences (
     collected_at     TEXT NOT NULL,
     FOREIGN KEY (investigation_id) REFERENCES investigations(id)
 );
+
+SELECT a.router
+FROM incidents AS i
+JOIN incident_alerts AS ia 
+    ON i.id = ia.incident_id
+JOIN alerts AS a
+    ON a.id = ia.alert_id
