@@ -1,5 +1,4 @@
 import requests
-from fastapi import HTTPException
 
 PROMETHEUS_URL = "http://localhost:9090"
 

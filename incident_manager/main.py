@@ -2,28 +2,29 @@ from fastapi import FastAPI, HTTPException
 
 from pydantic import BaseModel
 
-from database import process_alert , get_incident , update_incident_status , create_investigation
+from database import (
+    process_alert,
+    get_incident,
+    update_incident_status,
+    create_investigation,
+)
 
 app = FastAPI(title="NetOps Sentinel - Incident Manager")
 
 VALID_STATES = {"firing", "resolved"}
 
-ROUTERS = {
-    "192.168.122.247:9100": "R1",
-    "192.168.122.195:9100": "R2"
-}
+ROUTERS = {"192.168.122.247:9100": "R1", "192.168.122.195:9100": "R2"}
 
 
+# --------------------------------------------------------------------------- Webhook: receives alerts from AlertManager
 @app.post("/webhook/alerts")
 def receive_alerts(data: dict):
 
+    # Alertmanager groups alerts, so the body must contain a list under "alerts".
     alerts = data.get("alerts")
 
     if not isinstance(alerts, list):
-        raise HTTPException(
-            status_code=400,
-            detail="'alerts' must be a list"
-        )
+        raise HTTPException(status_code=400, detail="'alerts' must be a list")
 
     processed_alerts = []
     counts = {"created": 0, "updated": 0, "duplicate": 0}
@@ -31,6 +32,7 @@ def receive_alerts(data: dict):
 
     for alert in alerts:
 
+        # Skip entries that are not JSON objects, or that have no usable labels.
         if not isinstance(alert, dict):
             skipped += 1
             continue
@@ -41,6 +43,7 @@ def receive_alerts(data: dict):
             skipped += 1
             continue
 
+        # Extract the fields we need; .get() returns None instead of crashing on missing keys.
         fingerprint = alert.get("fingerprint")
         alertname = labels.get("alertname")
         status = alert.get("status")
@@ -51,6 +54,7 @@ def receive_alerts(data: dict):
         if not isinstance(ends_at, str) or ends_at.startswith("0001-01-01"):
             ends_at = None
 
+        # Skip alerts missing a required field or carrying an unknown state.
         if (
             not fingerprint
             or not alertname
@@ -60,89 +64,101 @@ def receive_alerts(data: dict):
             skipped += 1
             continue
 
-        router = labels.get("router") or ROUTERS.get(instance, "unknown")
+        router = labels.get("router") or ROUTERS.get(
+            instance, "unknown"
+        )  # "unknown" when the address is not in ROUTERS
 
         severity = labels.get("severity", "unknown")
 
+        # Hand the alert to the database layer, which saves it (and opens an incident if needed)
         result = process_alert(
             fingerprint=fingerprint,
             alertname=alertname,
             router=router,
             status=status,
             started_at=starts_at,
-            severity=severity ,
-            ended_at=ends_at
+            severity=severity,
+            ended_at=ends_at,
         )
+
         action = result["action"]
         counts[action] += 1
 
-        processed_alerts.append({
-            "fingerprint": fingerprint,
-            "alertname": alertname,
-            "severity": severity,
-            "router": router,
-            "instance": instance,
-            "status": status,
-            "startsAt": starts_at,
-            "endsAt": ends_at,
-            "action": action,
-            "alert_id": result["alert_id"],
-            "incident_id": result["incident_id"]
-        })
-    return {
-        "received": True,
-        **counts,
-        "skipped": skipped,
-        "alerts": processed_alerts
-    }
+        # Remember what was processed so the response shows it.
+        processed_alerts.append(
+            {
+                "fingerprint": fingerprint,
+                "alertname": alertname,
+                "severity": severity,
+                "router": router,
+                "instance": instance,
+                "status": status,
+                "startsAt": starts_at,
+                "endsAt": ends_at,
+                "action": action,
+                "alert_id": result["alert_id"],
+                "incident_id": result[
+                    "incident_id"
+                ],  # None unless a new incident was opened for this alert
+            }
+        )
 
+    # Summary of the whole request; **counts copies created/updated/duplicate into the response.
+    return {"received": True, **counts, "skipped": skipped, "alerts": processed_alerts}
+
+
+# --------------------------------------------------------------------------- Reading a single incident
 @app.get("/incidents/{incident_id}")
 def read_incident(incident_id: int):
+
     incident = get_incident(incident_id)
 
     if incident is None:
         raise HTTPException(status_code=404, detail="Incident not found")
 
+    # The database returns a tuple; turn it into a JSON object with named fields.
     return {
         "id": incident[0],
         "status": incident[1],
         "severity": incident[2],
         "opened_at": incident[3],
-        "closed_at": incident[4],
+        "closed_at": incident[4],  # null until the incident is closed
         "root_cause": incident[5],
     }
 
+
+# --------------------------------------------------------------------------- Changing the status of an incident
+
+# Describes the request body: {"status": "investigating"}.
+# Pydantic checks the shape of the JSON (422 if wrong);
 class IncidentStatusUpdate(BaseModel):
     status: str
 
 ERROR_STATUS_CODES = {
-    "incident_not_found": 404,
-    "invalid_transition": 409,
-    "status_changed": 409,
+    "incident_not_found": 404,  # the incident does not exist
+    "invalid_transition": 409,  # the request conflicts with the incident's current state
+    "status_changed": 409,  # someone else changed the status in the meantime
 }
 
-@app.patch("/incidents/{incident_id}/status")
+@app.patch("/incidents/{incident_id}/status")  # PATCH: changes one field of an existing resource
 def update_status(incident_id: int, payload: IncidentStatusUpdate):
 
-    incident_update_status = update_incident_status(incident_id , payload.status)
+    incident_update_status = update_incident_status(incident_id, payload.status)
 
     if incident_update_status["success"]:
         return incident_update_status
 
-
     status_code = ERROR_STATUS_CODES.get(incident_update_status["error"], 400)
-    raise HTTPException(status_code=status_code, detail=incident_update_status)  
+    raise HTTPException(status_code=status_code, detail=incident_update_status)
 
-@app.post("/incidents/{incident_id}/investigations" , status_code=201)
+# --------------------------------------------------------------------------- Starting an investigation for an incident
+@app.post("/incidents/{incident_id}/investigations", status_code=201)
 def create_investigation_incident(incident_id: int):
 
     investigation_id = create_investigation(incident_id)
 
+    # None means the incident does not exist, so there is nothing to attach the investigation to.
     if investigation_id is None:
-        raise HTTPException(status_code=404 , detail="Incident not found")
+        raise HTTPException(status_code=404, detail="Incident not found")
 
-    return {"investigation_id" : investigation_id , "status": "running"}
-
-    
-
-    
+    return {"investigation_id": investigation_id, "status": "running"}
