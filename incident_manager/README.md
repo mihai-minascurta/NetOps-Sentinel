@@ -1,14 +1,14 @@
 # NetOps Sentinel
 
-Sistem care **supraveghează două VM-uri (R1 și R2), anunță când ceva nu merge și începe singur să afle de ce**.
+Sistem care **supraveghează două VM-uri (R1 și R2), anunță când ceva nu merge și află singur de ce**.
 
-Când apare o problemă (VM căzut, CPU/RAM/disc aproape pline), administratorul primește e-mail, iar problema este salvată ca **incident** și urmărită până la închidere. Pentru fiecare incident se poate porni o **investigație automată** care colectează dovezi.
+Când apare o problemă (VM căzut, CPU/RAM/disc aproape pline), administratorul primește e-mail, iar problema este salvată ca **incident** și urmărită până la închidere. Pentru fiecare incident se poate porni o **investigație automată** care colectează dovezi de la Prometheus.
 
 | Etapă | Ce face | Stare |
 |---|---|---|
 | **M1–M3** Infrastructura | Monitorizare, alerte pe e-mail, grafice | Funcționează |
 | **M4** Incident Manager | Primește alertele și gestionează incidentele | Funcționează |
-| **M5** Investigation Engine | Investighează incidentele și salvează dovezile | În dezvoltare |
+| **M5** Investigation Engine | Investighează incidentele și salvează dovezile | Funcționează |
 | **M6** AI | Propune cauze și recomandări pe baza dovezilor | Planificat |
 
 ```mermaid
@@ -26,7 +26,7 @@ flowchart LR
 
 ## M1–M3: Infrastructura
 
-- **node_exporter** (pe R1 și R2) expune starea mașinii: CPU, RAM, disc.
+- **node_exporter** (pe R1 și R2) expune starea mașinii: CPU, RAM, disc, rețea.
 - **Prometheus** citește datele la 15 secunde și verifică regulile: țintă căzută (2 min), CPU > 90% (5 min), RAM > 85% (5 min), disc > 85% (10 min).
 - **Alertmanager** trimite alerta pe **e-mail** și către **API** (webhook), iar la final trimite și „rezolvat".
 - **Grafana** afișează grafice; nu face parte din fluxul alertelor.
@@ -47,7 +47,7 @@ Incidentul trece strict prin **`open → investigating → resolved → closed`*
 | `receive_alerts`<br>`POST /webhook/alerts` | Primește alertele de la Alertmanager, le validează (alertele invalide sunt sărite, nu opresc restul) și le trimite la salvare. Întoarce câte au fost create, actualizate, duplicate sau sărite. |
 | `read_incident`<br>`GET /incidents/{id}` | Returnează un incident; **404** dacă nu există. |
 | `update_status`<br>`PATCH /incidents/{id}/status` | Cere trecerea la starea următoare. **404** = nu există, **409** = tranziție invalidă, **422** = date greșite. |
-| `create_investigation_incident`<br>`POST /incidents/{id}/investigations` | Creează o investigație `running` (**201**); **404** dacă incidentul lipsește. |
+| `create_investigation_incident`<br>`POST /incidents/{id}/investigations` | Pornește `run_investigation()` pentru incident și returnează rezumatul (**201**); **404** dacă incidentul lipsește. |
 
 ### Baza de date (`database.py`)
 
@@ -66,7 +66,24 @@ Incidentul trece strict prin **`open → investigating → resolved → closed`*
 
 **Ideea:** în loc să ghicim cauza din numele alertei, **întrebăm Prometheus** și păstrăm răspunsul ca dovadă.
 
-Exemplu: incident `NodeExporterDown` pe R1 → engine-ul află că e R1 → întreabă Prometheus dacă R1 răspunde → salvează rezultatul.
+**Cum merge:** Engine-ul decide *ce* se verifică, iar Collectorii doar *colectează* date. Prima verificare e mereu disponibilitatea routerului; restul rulează numai dacă routerul răspunde.
+
+```mermaid
+flowchart TD
+    A[run_investigation] --> B[Identifică routerul]
+    B --> C[Creează investigația<br/>running]
+    C --> D[collect_node_status]
+    D --> E[Salvează dovada]
+    E --> F{Router UP?}
+    F -->|da| G[Rulează METRIC_COLLECTORS<br/>CPU, RAM, disc, rețea]
+    F -->|nu| H[Sare peste metrici]
+    G --> I[Salvează fiecare dovadă]
+    I --> J[finish_investigation<br/>completed]
+    H --> J
+    J --> K[Returnează rezumatul]
+```
+
+Dacă routerul e **DOWN**, investigația tot se încheie `completed`: Engine-ul și-a făcut treaba, iar dovada `prometheus_up` arată eșecul (`failed`). Dacă apare o excepție, investigația e marcată `failed`, nu rămâne blocată în `running`.
 
 ### Funcțiile, în ordinea în care rulează
 
@@ -74,39 +91,52 @@ Exemplu: incident `NodeExporterDown` pe R1 → engine-ul află că e R1 → înt
 |---|---|---|---|
 | 1 | `get_incident_router` | `database.py` | Găsește routerul afectat (R1, R2 sau nimic) prin legătura incident → alertă. |
 | 2 | `create_investigation` | `database.py` | Verifică dacă incidentul există și creează investigația cu starea `running`. |
-| 3 | `query_prometheus` | `collectors/prometheus.py` | Trimite o interogare PromQL către Prometheus prin HTTP (cu timeout de 5 secunde) și întoarce rezultatele. |
-| 4 | `collect_node_status` | `collectors/prometheus.py` | Folosește `query_prometheus` pe `up{router="R1"}` și transformă răspunsul într-o dovadă (tabelul de mai jos). |
-| 5 | `save_evidence` | `database.py` | Salvează dovada în baza de date; rezultatul e transformat în JSON text. |
+| 3 | `collect_node_status` | `collectors/prometheus.py` | Verifică dacă routerul răspunde (`up{router="R1"}`). Rulează **primul**, mereu. |
+| 4 | `METRIC_COLLECTORS` | `engine.py` | Lista collectorilor de metrici, executați doar dacă routerul e UP. |
+| 5 | `save_evidence` | `database.py` | Salvează fiecare dovadă; rezultatul e transformat în JSON text. |
 | 6 | `finish_investigation` | `database.py` | Trece investigația din `running` în `completed` sau `failed` și notează ora. |
-| | `run_investigation` | `engine.py` | **Orchestratorul:** apelează funcțiile 1–6 în ordine. Dacă ceva eșuează, investigația e marcată `failed`, nu rămâne blocată. |
+| | `run_investigation` | `engine.py` | **Orchestratorul:** apelează pașii 1–6 în ordine și returnează rezumatul. |
 
-| Rezultat `up` | Înseamnă | Stare dovadă |
+Toate interogările trec prin `query_prometheus` (HTTP către Prometheus, timeout 5 secunde).
+
+### Collectorii (`collectors/prometheus.py`)
+
+Fiecare întoarce aceeași formă: `check_type`, `status`, `result`. Collectorii **nu** verifică dacă routerul e UP, pentru că Engine-ul îi apelează doar când este.
+
+| Collector | Ce măsoară | Statusuri posibile |
 |---|---|---|
-| `1` | Prometheus poate colecta date de la țintă | `success` |
-| `0` | Prometheus nu poate colecta date | `failed` |
-| fără date | Nu există nicio serie pentru interogare | `error` |
+| `collect_node_status` | Routerul răspunde la Prometheus (`up`) | `success` / `failed` / `error` |
+| `collect_cpu_usage` | Folosirea CPU | `success` / `warning` / `error` |
+| `collect_memory_usage` | Folosirea RAM | `success` / `warning` / `error` |
+| `collect_disk_usage` | Spațiul ocupat pe disc | `success` / `warning` / `error` |
+| `collect_network_interfaces` | Interfețele de rețea (sus/jos) | `success` / `warning` / `error` |
+| `collect_network_errors` | Erori RX/TX pe secundă, pe interfață, în ultimele 5 minute (fără `lo`) | `success` / `warning` / `error` |
 
-`up = 1` nu înseamnă că toată rețeaua e în regulă, ci doar că ținta poate fi interogată.
+**Statusul unei dovezi:**
+
+| Status | Înseamnă |
+|---|---|
+| `success` | Totul în regulă |
+| `warning` | Datele există, dar o valoare e peste prag (de exemplu o interfață cu erori sau căzută) |
+| `failed` | Ținta nu poate fi colectată (`up = 0`) |
+| `error` | Prometheus nu a returnat date pentru interogare |
+
+`up = 1` nu înseamnă că toată rețeaua e în regulă, ci doar că ținta poate fi interogată. De asta urmează verificările de metrici.
+
+### Rezultat
+
+| Situație | Dovezi salvate | Status investigație |
+|---|---|---|
+| Router UP | toate (node status + metrici) | `completed` |
+| Router DOWN | 1 (`prometheus_up`, `failed`) | `completed` |
+| Eroare în timpul rulării | cele salvate până atunci | `failed` |
+
 
 ## Baza de date (SQLite)
 
 `alerts` · `incidents` · `incident_alerts` (legătura dintre ele) · `investigations` (M5) · `evidences` (M5)
 
-## Pornire
-
-```bash
-cd monitoring && docker compose up -d
-cd ../incident_manager
-python3 -m venv .venv && source .venv/bin/activate
-pip install "fastapi[standard]" requests
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
-
-Docs interactive: `http://127.0.0.1:8000/docs`. Baza `data/incidents.db` trebuie să aibă deja tabelele.
-
 ## Ce urmează
 
-1. Conectăm `POST /incidents/{id}/investigations` la `run_investigation()` (acum creează doar înregistrarea) și testăm tot fluxul cap-coadă.
-2. Adăugăm verificări noi în Collector: rețea și sistem (CPU, RAM, disc).
-3. **M6:** AI-ul folosește dovezile pentru ipoteze și recomandări.
-4. Curățenie: creare automată a bazei de date, lista de incidente și dovezi prin API, teste, `requirements.txt`, autentificare.
+1. **M6:** AI-ul folosește dovezile pentru ipoteze de cauză și recomandări.
+2. Curățenie: creare automată a bazei de date, lista de incidente și dovezi prin API, teste, `requirements.txt`, autentificare.
