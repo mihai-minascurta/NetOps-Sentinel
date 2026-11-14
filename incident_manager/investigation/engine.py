@@ -1,7 +1,7 @@
 
 from database import get_incident_router, create_investigation, save_evidence, finish_investigation
 
-from .collectors.prometheus import collect_node_status , collect_cpu_usage
+from .collectors.prometheus import collect_node_status , collect_cpu_usage , collect_memory_usage
 
 
 def run_investigation(incident_id: int) -> dict:
@@ -28,7 +28,8 @@ def run_investigation(incident_id: int) -> dict:
         #Define collectors
         collectors = [
             collect_node_status,
-            collect_cpu_usage
+            collect_cpu_usage ,
+            collect_memory_usage
         ]
 
         #Collect and save evidence

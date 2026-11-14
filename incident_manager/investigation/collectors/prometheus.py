@@ -104,3 +104,55 @@ def collect_cpu_usage(router: str) -> dict:
             "window": window,
         },
     }
+
+def collect_memory_usage(router: str) -> dict:
+
+    threshold = 75
+    node_status = collect_node_status(router)
+
+    if node_status["status"] != "success":
+        return {
+            "check_type": "memory_usage",
+            "status": node_status["status"],
+            "result": {
+                "router": router,
+                "error": "Memory collection skipped because router is unavailable",
+            },
+        }
+
+    #Calculate memory usage
+    promql = f"""
+    100 * (
+        1 - (
+            node_memory_MemAvailable_bytes{{router="{router}"}}
+            /
+            node_memory_MemTotal_bytes{{router="{router}"}}
+        )
+    )
+    """
+    results = query_prometheus(promql)
+
+    if not results:
+        return {
+            "check_type": "memory_usage",
+            "status": "error",
+            "result": {
+                "router": router,
+                "error": "no memory data returned by Prometheus",
+            },
+        }
+
+    #Extract memory usage
+    memory_usage = float(results[0]["value"][1])
+    status = "warning" if memory_usage > threshold else "success"
+
+    return {
+        "check_type": "memory_usage",
+        "status": status,
+        "result": {
+            "router": router,
+            "usage_percent": round(memory_usage, 2), #round it...
+            "threshold_percent": threshold,
+            "window": "instant",
+        },
+    }
