@@ -56,18 +56,6 @@ def collect_cpu_usage(router: str) -> dict:
     threshold = 90
     window = "5m"
 
-    node_status = collect_node_status(router)
-
-    if node_status["status"] != "success":
-        return {
-            "check_type": "cpu_usage",
-            "status": node_status["status"],
-            "result": {
-                "router": router,
-                "error": "CPU collection skipped because router is unavailable",
-            },
-        }
-
     #Calculate CPU usage
     promql = f"""
     100 * (
@@ -108,18 +96,6 @@ def collect_cpu_usage(router: str) -> dict:
 def collect_memory_usage(router: str) -> dict:
 
     threshold = 75
-    node_status = collect_node_status(router)
-
-    if node_status["status"] != "success":
-        return {
-            "check_type": "memory_usage",
-            "status": node_status["status"],
-            "result": {
-                "router": router,
-                "error": "Memory collection skipped because router is unavailable",
-            },
-        }
-
     #Calculate memory usage
     promql = f"""
     100 * (
