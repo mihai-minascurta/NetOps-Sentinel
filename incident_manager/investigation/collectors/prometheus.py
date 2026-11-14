@@ -132,3 +132,50 @@ def collect_memory_usage(router: str) -> dict:
             "window": "instant",
         },
     }
+
+def collect_disk_usage(router: str) -> dict:
+
+    threshold = 85
+
+    # Calculate root filesystem usage
+    promql = f"""
+    100 * (
+        1 - (
+            node_filesystem_avail_bytes{{router="{router}", mountpoint="/"}}
+            /
+            node_filesystem_size_bytes{{router="{router}", mountpoint="/"}}
+        )
+    )
+    """
+
+    results = query_prometheus(promql)
+
+    # Check if Prometheus returned data
+    if not results:
+        return {
+            "check_type": "disk_usage",
+            "status": "error",
+            "result": {
+                "router": router,
+                "mountpoint": "/",
+                "error": "no disk data returned by Prometheus",
+            },
+        }
+
+    # Extract disk usage
+    disk_usage = float(results[0]["value"][1])
+
+    # Determine status based on threshold
+    status = "warning" if disk_usage > threshold else "success"
+
+    return {
+        "check_type": "disk_usage",
+        "status": status,
+        "result": {
+            "router": router,
+            "mountpoint": "/",
+            "usage_percent": round(disk_usage, 2),
+            "threshold_percent": threshold,
+            "window": "instant",
+        },
+    }
