@@ -1,7 +1,7 @@
 
 from database import get_incident_router, create_investigation, save_evidence, finish_investigation
 
-from .collectors.prometheus import collect_node_status , collect_cpu_usage , collect_memory_usage , collect_disk_usage
+from .collectors.prometheus import collect_node_status , collect_cpu_usage , collect_memory_usage , collect_disk_usage , collect_network_interfaces
 
 def run_investigation(incident_id: int) -> dict:
 
@@ -43,7 +43,8 @@ def run_investigation(incident_id: int) -> dict:
         metric_collectors = [
             collect_cpu_usage,
             collect_memory_usage ,
-            collect_disk_usage
+            collect_disk_usage ,
+            collect_network_interfaces
         ]
 
         skipped_collectors = []

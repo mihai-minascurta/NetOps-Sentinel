@@ -179,3 +179,52 @@ def collect_disk_usage(router: str) -> dict:
             "window": "instant",
         },
     }
+
+def collect_network_interfaces(router: str) -> dict:
+
+    # Check network interfaces status
+    promql = f'node_network_up{{router="{router}", device!="lo"}}'
+    results = query_prometheus(promql)
+
+    if not results:
+        return {
+            "check_type": "network_interfaces",
+            "status": "error",
+            "result": {
+                "router": router,
+                "error": "no network interface data returned by Prometheus",
+            },
+        }
+
+    # Extract interface information
+    interfaces = []
+
+    for item in results:
+
+        interface_up = int(float(item["value"][1]))
+        device = item["metric"]["device"]
+
+        interfaces.append({
+            "device": device,
+            "up": interface_up,
+            "status": "success" if interface_up == 1 else "warning",
+        })
+
+    # Determine overall status
+    status = "success"
+
+    for interface in interfaces:
+        if interface["up"] == 0:
+            status = "warning"
+            break
+
+    # Return evidence
+    return {
+        "check_type": "network_interfaces",
+        "status": status,
+        "result": {
+            "router": router,
+            "interface_count": len(interfaces),
+            "interfaces": interfaces,
+        },
+    }
