@@ -1,7 +1,7 @@
 
 from database import get_incident_router, create_investigation, save_evidence, finish_investigation
 
-from .collectors.prometheus import collect_node_status
+from .collectors.prometheus import collect_node_status , collect_cpu_usage
 
 
 def run_investigation(incident_id: int) -> dict:
@@ -25,18 +25,29 @@ def run_investigation(incident_id: int) -> dict:
         }
 
     try:
-        # 3. Collect evidence from Prometheus
-        evidence_data = collect_node_status(router_name)
+        #Define collectors
+        collectors = [
+            collect_node_status,
+            collect_cpu_usage
+        ]
 
-        # 4. Save evidence in SQLite
-        evidence_id = save_evidence(
-            investigation_id=investigation_id,
-            check_type=evidence_data["check_type"],
-            status=evidence_data["status"],
-            result=evidence_data["result"]
-        )
+        #Collect and save evidence
+        evidence_ids = []
 
-        # 5. Finish investigation
+        for collector in collectors:
+
+            evidence_data = collector(router_name)
+
+            evidence_id = save_evidence(
+                investigation_id=investigation_id,
+                check_type=evidence_data["check_type"],
+                status=evidence_data["status"],
+                result=evidence_data["result"]
+            )
+
+            evidence_ids.append(evidence_id)
+
+        #Finish investigation
         finished = finish_investigation(
             investigation_id,
             "completed"
@@ -47,18 +58,19 @@ def run_investigation(incident_id: int) -> dict:
                 f"Cannot finish investigation: {finished}"
             )
 
-        # 6. Return investigation summary
+        #Return investigation summary
         return {
             "success": True,
             "investigation_id": investigation_id,
             "incident_id": incident_id,
             "router": router_name,
             "status": "completed",
-            "evidence_id": evidence_id
+            "evidence_ids": evidence_ids,
+            "evidence_count": len(evidence_ids)
         }
 
     except Exception:
-        # Mark investigation as failed if possible
+        # ark investigation as failed if possible
         try:
             finish_investigation(investigation_id, "failed")
         except Exception:
