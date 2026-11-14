@@ -228,3 +228,97 @@ def collect_network_interfaces(router: str) -> dict:
             "interfaces": interfaces,
         },
     }
+
+def collect_network_errors(router: str) -> dict:
+
+    window = "5m"
+
+    # Query receive errors
+    rx_promql = f"""
+    sum by (router, device) (
+        rate(node_network_receive_errs_total{{router="{router}", device!="lo"}}[{window}])
+    )
+    """
+    # Query transmit errors
+    tx_promql = f"""
+    sum by (router, device) (
+        rate(node_network_transmit_errs_total{{router="{router}", device!="lo"}}[{window}])
+    )
+    """
+    rx_results = query_prometheus(rx_promql)
+    tx_results = query_prometheus(tx_promql)
+
+    if not rx_results or not tx_results:
+        return {
+            "check_type": "network_errors",
+            "status": "error",
+            "result": {
+                "router": router,
+                "error": "no network error data returned by Prometheus",
+            },
+        }
+
+    #Extract interface errors
+    interfaces = {}
+
+    for item in rx_results:
+
+        device = item["metric"]["device"]
+
+        interfaces.setdefault(device, {
+            "device": device,
+            "receive_errors_per_second": 0,
+            "transmit_errors_per_second": 0,
+        })
+
+        interfaces[device]["receive_errors_per_second"] = float(
+            item["value"][1]
+        )
+
+    for item in tx_results:
+
+        device = item["metric"]["device"]
+
+        interfaces.setdefault(device, {
+            "device": device,
+            "receive_errors_per_second": 0,
+            "transmit_errors_per_second": 0,
+        })
+
+        interfaces[device]["transmit_errors_per_second"] = float(
+            item["value"][1]
+        )
+
+    # Determine status for each interface
+    for interface in interfaces.values():
+
+        rx_errors = interface["receive_errors_per_second"]
+        tx_errors = interface["transmit_errors_per_second"]
+
+        if rx_errors > 0 or tx_errors > 0:
+            interface["status"] = "warning"
+        else:
+            interface["status"] = "success"
+
+        interface["receive_errors_per_second"] = round(rx_errors, 6)
+        interface["transmit_errors_per_second"] = round(tx_errors, 6)
+
+    # Determine overall status
+    status = "success"
+
+    for interface in interfaces.values():
+        if interface["status"] == "warning":
+            status = "warning"
+            break
+
+    # Return evidence
+    return {
+        "check_type": "network_errors",
+        "status": status,
+        "result": {
+            "router": router,
+            "interface_count": len(interfaces),
+            "window": window,
+            "interfaces": list(interfaces.values()),
+        },
+    }
