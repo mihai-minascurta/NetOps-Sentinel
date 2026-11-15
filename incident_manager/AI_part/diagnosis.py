@@ -45,15 +45,6 @@ def convert_mcp_tools(mcp_tools) -> list[dict]:
 
     return llm_tools
 
-async def test_llm():
-    response = await llm_client.chat.completions.create(
-        model=MODEL,
-        messages=[
-            {"role": "user", "content": "What is Prometheus? Explain in one sentence."},
-        ],
-    )
-    print(response)
-
 async def main():
 
     async with Client(server_params) as client:
@@ -78,7 +69,25 @@ async def main():
             tool_choice="auto",
         )
 
-        print(response)
+        message = response.choices[0].message #Model Generated Message
+        if not message.tool_calls:
+            print(message.content)
+            return
+
+        tool_call = message.tool_calls[0] #first tool solicitation
+
+        tool_name = tool_call.function.name
+        arguments = json.loads(tool_call.function.arguments)
+
+        print("Tool:", tool_name)
+        print("Arguments:", arguments)
+
+        result = await client.call_tool(
+            tool_name ,
+            arguments
+        )
+
+        print(result)
 
 if __name__ == "__main__":
     asyncio.run(main())
