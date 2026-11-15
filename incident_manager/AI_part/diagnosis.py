@@ -66,8 +66,19 @@ async def main():
             tools_result.tools
         )
 
-        # Inspect the converted tools
-        print(json.dumps(llm_tools, indent=4))
+        response = await llm_client.chat.completions.create(
+            model=MODEL,
+            messages=[
+                {
+                    "role": "user",
+                    "content": "Retrieve the details of investigation with ID 1."
+                }
+            ],
+            tools=llm_tools,
+            tool_choice="auto",
+        )
+
+        print(response)
 
 if __name__ == "__main__":
     asyncio.run(main())
