@@ -17,66 +17,57 @@ server_params = StdioServerParameters(
     cwd=str(PROJECT_ROOT),
 )
 
-
 BASE_URL = "https://integrate.api.nvidia.com/v1"
 MODEL = "nvidia/nemotron-3.5-super-vl-120b-a12b"
 
 llm_client = AsyncOpenAI(
     base_url=BASE_URL,
+
     api_key=os.environ["NVIDIA_API_KEY"],
 )
 
+def convert_mcp_tools(mcp_tools) -> list[dict]:
+
+    llm_tools = []
+
+    for tool in mcp_tools:
+
+        llm_tool = {
+            "type": "function",
+            "function": {
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": tool.input_schema
+            }
+        }
+
+        llm_tools.append(llm_tool)
+
+    return llm_tools
+
+async def test_llm():
+    response = await llm_client.chat.completions.create(
+        model=MODEL,
+        messages=[
+            {"role": "user", "content": "What is Prometheus? Explain in one sentence."},
+        ],
+    )
+    print(response)
+
 async def main():
 
-    print("Starting MCP Client...")
-
-    # Connect to the MCP Server
     async with Client(server_params) as client:
 
-        print("Connected to MCP Server!")
-
-        # Discover available tools
+        # Discover MCP tools
         tools_result = await client.list_tools()
 
-        print("\nAvailable tools:")
-
-        for tool in tools_result.tools:
-            print(f"- {tool.name}")
-            print(f"  Description: {tool.description}")
-
-        # Call the first tool
-        print("\nCalling get_investigation...")
-
-        result = await client.call_tool(
-            "get_investigation",
-            {"investigation_id": 1},
+        # Convert MCP tools into LLM format
+        llm_tools = convert_mcp_tools(
+            tools_result.tools
         )
 
-        # Handle tool errors
-        if result.is_error:
-            print("\nTool execution failed:")
-
-            for block in result.content:
-                if isinstance(block, TextContent):
-                    print(block.text)
-
-        else:
-            print("\nInvestigation retrieved successfully:")
-
-            if result.structured_content is not None:
-                print(
-                    json.dumps(
-                        result.structured_content,
-                        indent=4,
-                        ensure_ascii=False,
-                    )
-                )
-            else:
-                for block in result.content:
-                    if isinstance(block, TextContent):
-                        print(block.text)
-
-    print("\nMCP connection closed.")
+        # Inspect the converted tools
+        print(json.dumps(llm_tools, indent=4))
 
 if __name__ == "__main__":
     asyncio.run(main())
