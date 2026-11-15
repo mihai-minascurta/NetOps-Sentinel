@@ -293,10 +293,8 @@ def save_evidence(investigation_id: int, check_type: str, status: str, result: d
     finally:
         connection.close()
 
-
 # Final states an investigation can end in.
 FINAL_INVESTIGATION_STATUSES = {"completed", "failed"}
-
 
 def finish_investigation(investigation_id: int, status: str):
 
