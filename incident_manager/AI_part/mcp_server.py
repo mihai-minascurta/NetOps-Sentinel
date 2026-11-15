@@ -8,7 +8,7 @@ mcp = MCPServer("NetOps Sentinel")
 
 @mcp.tool()
 def get_investigation(investigation_id: int) -> dict:
-    
+
     """Get an investigation by its ID (incident ID, status, start and end time)."""
 
     if investigation_id <= 0:
@@ -37,6 +37,18 @@ def get_incident(incident_id: int) -> dict:
 
     return incident
 
+@mcp.tool()
+def get_incident_alerts(incident_id: int) -> list[dict]:
+    """Get all alerts linked to an incident (alert name, router, state, start and end time)."""
 
+    if incident_id <= 0:
+        raise ToolError("incident_id must be a positive integer.")
+
+    incident = diagnosis_queries.get_incident(incident_id)
+
+    if incident is None:
+        raise ToolError(f"Incident {incident_id} was not found.")
+
+    return diagnosis_queries.get_incident_alerts(incident_id)
 if __name__ == "__main__":
     mcp.run()
