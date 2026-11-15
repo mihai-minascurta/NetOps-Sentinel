@@ -50,5 +50,20 @@ def get_incident_alerts(incident_id: int) -> list[dict]:
         raise ToolError(f"Incident {incident_id} was not found.")
 
     return diagnosis_queries.get_incident_alerts(incident_id)
+
+@mcp.tool()
+def get_evidences(investigation_id: int) -> list[dict]:
+    """Get all evidences linked to an investigation (check_type , status, result, collected_at) """
+
+    if investigation_id <=0:
+        raise ToolError("investigation_id must be a positive integer.")
+
+    investigation = diagnosis_queries.get_investigation(investigation_id)
+
+    if investigation is None:
+        raise ToolError(f"Investigation {investigation_id} was not found")
+
+    return diagnosis_queries.get_evidences(investigation_id)
+
 if __name__ == "__main__":
     mcp.run()
