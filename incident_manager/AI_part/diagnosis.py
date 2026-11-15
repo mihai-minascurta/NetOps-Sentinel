@@ -1,8 +1,10 @@
 import asyncio
 import sys
 import json
-from pathlib import Path
+import os
 
+from openai import AsyncOpenAI
+from pathlib import Path
 from mcp import Client, StdioServerParameters
 from mcp.types import TextContent
 
@@ -13,6 +15,15 @@ server_params = StdioServerParameters(
     command=sys.executable,
     args=["-m", "incident_manager.AI_part.mcp_server"],
     cwd=str(PROJECT_ROOT),
+)
+
+
+BASE_URL = "https://integrate.api.nvidia.com/v1"
+MODEL = "nvidia/nemotron-3.5-super-vl-120b-a12b"
+
+llm_client = AsyncOpenAI(
+    base_url=BASE_URL,
+    api_key=os.environ["NVIDIA_API_KEY"],
 )
 
 async def main():
