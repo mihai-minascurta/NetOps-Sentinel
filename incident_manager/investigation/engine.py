@@ -1,5 +1,5 @@
 
-from database import get_incident_router, create_investigation, save_evidence, finish_investigation
+from ..database import get_incident_router, create_investigation, save_evidence, finish_investigation
 
 from .collectors.prometheus import collect_node_status , collect_cpu_usage , collect_memory_usage , collect_disk_usage , collect_network_interfaces,collect_network_errors
 
