@@ -169,3 +169,22 @@ def create_investigation_incident(incident_id: int , background_tasks: Backgroun
 
     return result
 
+@app.get("/investigations/{investigation_id}/diagnosis")
+def read_investigation_diagnosis(investigation_id: int):
+
+    # Read the saved diagnosis from SQLite
+    result = get_saved_ai_diagnosis(investigation_id)
+
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Investigation not found."
+        )
+
+    if result["diagnosis"] is None:
+        raise HTTPException(
+            status_code=404,
+            detail="AI diagnosis not available yet."
+        )
+
+    return result
