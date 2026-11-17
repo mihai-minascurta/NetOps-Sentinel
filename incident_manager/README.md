@@ -1,142 +1,135 @@
-# NetOps Sentinel
+README database api · MD
+# NetOps Sentinel — Baza de date și API-ul
 
-Sistem care **supraveghează două VM-uri (R1 și R2), anunță când ceva nu merge și află singur de ce**.
+Trei fișiere țin proiectul în picioare. `data.sql` spune **cum arată datele**, `database.py` **cum se citesc și se scriu**, iar `main.py` **cum ajung cererile din exterior până la ele**. Tot ce vine după (Engine-ul M5, AI-ul M6) se sprijină pe ele.
 
-Când apare o problemă (VM căzut, CPU/RAM/disc aproape pline), administratorul primește e-mail, iar problema este salvată ca **incident** și urmărită până la închidere. Pentru fiecare incident se poate porni o **investigație automată** care colectează dovezi de la Prometheus.
-
-| Etapă | Ce face | Stare |
-|---|---|---|
-| **M1–M3** Infrastructura | Monitorizare, alerte pe e-mail, grafice | Funcționează |
-| **M4** Incident Manager | Primește alertele și gestionează incidentele | Funcționează |
-| **M5** Investigation Engine | Investighează incidentele și salvează dovezile | Funcționează |
-| **M6** AI | Propune cauze și recomandări pe baza dovezilor | Planificat |
+Regula după care sunt împărțite: **SQL doar în `database.py`, HTTP doar în `main.py`.** `main.py` nu deschide conexiuni, iar `database.py` nu știe nimic despre JSON-ul de la Alertmanager sau despre coduri HTTP.
 
 ```mermaid
 flowchart LR
-    VM[R1 / R2<br/>node_exporter] --> P[Prometheus]
-    P --> A[Alertmanager]
-    A -->|e-mail| E[Administrator]
-    A -->|webhook| API[FastAPI]
-    API --> DB[(SQLite)]
-    API --> ENG[Engine]
-    ENG -->|PromQL| P
-    ENG --> DB
-    P --> G[Grafana]
+    AM[Alertmanager] -->|POST /webhook/alerts| API[main.py<br/>FastAPI]
+    ADM[Administrator] -->|GET / PATCH / POST| API
+    API --> DBP[database.py]
+    DBP --> DB[(incidents.db<br/>SQLite)]
+    API -->|run_investigation| ENG[Engine M5]
+    API -->|BackgroundTasks| AI[diagnose M6]
+    ENG --> DBP
+    AI -->|save_ai_diagnosis| DBP
 ```
 
-## M1–M3: Infrastructura
+---
 
-- **node_exporter** (pe R1 și R2) expune starea mașinii: CPU, RAM, disc, rețea.
-- **Prometheus** citește datele la 15 secunde și verifică regulile: țintă căzută (2 min), CPU > 90% (5 min), RAM > 85% (5 min), disc > 85% (10 min).
-- **Alertmanager** trimite alerta pe **e-mail** și către **API** (webhook), iar la final trimite și „rezolvat".
-- **Grafana** afișează grafice; nu face parte din fluxul alertelor.
-- Prometheus, Alertmanager și Grafana rulează în **Docker Compose**; API-ul rulează pe host (port 8000).
+## `data.sql` — datele
 
-## M4: Incident Manager
-
-**Ideea:** sistemul află că există o problemă și o înregistrează corect, o singură dată.
-
-**Cum merge:** Alertmanager trimite alerta → API-ul o verifică → o salvează **într-o singură tranzacție** (ori se salvează tot, ori nimic) → dacă e nouă, creează un incident `open`. Aceeași alertă trimisă de mai multe ori nu creează incidente multiple (**deduplicare** după `fingerprint` + `started_at`).
-
-Incidentul trece strict prin **`open → investigating → resolved → closed`**; nu se poate sări peste pași. O alertă „rezolvată" nu închide singură incidentul.
-
-### API (`main.py`)
-
-| Funcție / rută | Ce face |
-|---|---|
-| `receive_alerts`<br>`POST /webhook/alerts` | Primește alertele de la Alertmanager, le validează (alertele invalide sunt sărite, nu opresc restul) și le trimite la salvare. Întoarce câte au fost create, actualizate, duplicate sau sărite. |
-| `read_incident`<br>`GET /incidents/{id}` | Returnează un incident; **404** dacă nu există. |
-| `update_status`<br>`PATCH /incidents/{id}/status` | Cere trecerea la starea următoare. **404** = nu există, **409** = tranziție invalidă, **422** = date greșite. |
-| `create_investigation_incident`<br>`POST /incidents/{id}/investigations` | Pornește `run_investigation()` pentru incident și returnează rezumatul (**201**); **404** dacă incidentul lipsește. |
-
-### Baza de date (`database.py`)
-
-| Funcție | Ce face |
-|---|---|
-| `get_db_connection` | Deschide SQLite și activează verificarea relațiilor dintre tabele (`foreign_keys`). |
-| `save_alert` | Compară alerta cu cele existente: **nouă** → o inserează, **schimbată** → o actualizează, **identică** → nu face nimic. |
-| `create_incident_for_alert` | Creează incidentul `open` și îl leagă de alertă. |
-| `process_alert` | Coordonează `save_alert` și `create_incident_for_alert` într-o **singură tranzacție**: `commit` la succes, `rollback` la eroare. |
-| `update_incident_status` | Verifică dacă tranziția e permisă, actualizează starea și notează ora la `closed`. |
-| `get_incident` / `get_incidents` | Citesc un incident sau pe toate. |
-
-> **Regula de bază:** funcțiile mici (`save_alert`, `create_incident_for_alert`) nu salvează singure. Funcția care deschide conexiunea (`process_alert`) decide când se face `commit`, ca totul să reușească sau să se anuleze împreună.
-
-## M5: Investigation Engine
-
-**Ideea:** în loc să ghicim cauza din numele alertei, **întrebăm Prometheus** și păstrăm răspunsul ca dovadă.
-
-**Cum merge:** Engine-ul decide *ce* se verifică, iar Collectorii doar *colectează* date. Prima verificare e mereu disponibilitatea routerului; restul rulează numai dacă routerul răspunde.
+Cinci tabele, legate între ele:
 
 ```mermaid
-flowchart TD
-    A[run_investigation] --> B[Identifică routerul]
-    B --> C[Creează investigația<br/>running]
-    C --> D[collect_node_status]
-    D --> E[Salvează dovada]
-    E --> F{Router UP?}
-    F -->|da| G[Rulează METRIC_COLLECTORS<br/>CPU, RAM, disc, rețea]
-    F -->|nu| H[Sare peste metrici]
-    G --> I[Salvează fiecare dovadă]
-    I --> J[finish_investigation<br/>completed]
-    H --> J
-    J --> K[Returnează rezumatul]
+erDiagram
+    incidents ||--o{ incident_alerts : are
+    alerts ||--o{ incident_alerts : declanseaza
+    incidents ||--o{ investigations : are
+    investigations ||--o{ evidences : aduna
 ```
 
-Dacă routerul e **DOWN**, investigația tot se încheie `completed`: Engine-ul și-a făcut treaba, iar dovada `prometheus_up` arată eșecul (`failed`). Dacă apare o excepție, investigația e marcată `failed`, nu rămâne blocată în `running`.
-
-### Funcțiile, în ordinea în care rulează
-
-| # | Funcție | Fișier | Ce face |
-|---|---|---|---|
-| 1 | `get_incident_router` | `database.py` | Găsește routerul afectat (R1, R2 sau nimic) prin legătura incident → alertă. |
-| 2 | `create_investigation` | `database.py` | Verifică dacă incidentul există și creează investigația cu starea `running`. |
-| 3 | `collect_node_status` | `collectors/prometheus.py` | Verifică dacă routerul răspunde (`up{router="R1"}`). Rulează **primul**, mereu. |
-| 4 | `METRIC_COLLECTORS` | `engine.py` | Lista collectorilor de metrici, executați doar dacă routerul e UP. |
-| 5 | `save_evidence` | `database.py` | Salvează fiecare dovadă; rezultatul e transformat în JSON text. |
-| 6 | `finish_investigation` | `database.py` | Trece investigația din `running` în `completed` sau `failed` și notează ora. |
-| | `run_investigation` | `engine.py` | **Orchestratorul:** apelează pașii 1–6 în ordine și returnează rezumatul. |
-
-Toate interogările trec prin `query_prometheus` (HTTP către Prometheus, timeout 5 secunde).
-
-### Collectorii (`collectors/prometheus.py`)
-
-Fiecare întoarce aceeași formă: `check_type`, `status`, `result`. Collectorii **nu** verifică dacă routerul e UP, pentru că Engine-ul îi apelează doar când este.
-
-| Collector | Ce măsoară | Statusuri posibile |
-|---|---|---|
-| `collect_node_status` | Routerul răspunde la Prometheus (`up`) | `success` / `failed` / `error` |
-| `collect_cpu_usage` | Folosirea CPU | `success` / `warning` / `error` |
-| `collect_memory_usage` | Folosirea RAM | `success` / `warning` / `error` |
-| `collect_disk_usage` | Spațiul ocupat pe disc | `success` / `warning` / `error` |
-| `collect_network_interfaces` | Interfețele de rețea (sus/jos) | `success` / `warning` / `error` |
-| `collect_network_errors` | Erori RX/TX pe secundă, pe interfață, în ultimele 5 minute (fără `lo`) | `success` / `warning` / `error` |
-
-**Statusul unei dovezi:**
-
-| Status | Înseamnă |
+| Tabel | Ce ține |
 |---|---|
-| `success` | Totul în regulă |
-| `warning` | Datele există, dar o valoare e peste prag (de exemplu o interfață cu erori sau căzută) |
-| `failed` | Ținta nu poate fi colectată (`up = 0`) |
-| `error` | Prometheus nu a returnat date pentru interogare |
+| `incidents` | Problema: `status`, `severity`, `opened_at`, `closed_at`, `root_cause` |
+| `alerts` | Un episod de alertă: `fingerprint`, `alertname`, `router`, `state`, `started_at`, `ended_at` |
+| `incident_alerts` | Legătura many-to-many: un incident poate avea mai multe alerte și invers |
+| `investigations` | O rulare a Engine-ului pe un incident, plus `ai_diagnosis` (gol până îl scrie M6) |
+| `evidences` | Dovezile unei investigații: `check_type`, `status`, `result` (JSON ca text) |
 
-`up = 1` nu înseamnă că toată rețeaua e în regulă, ci doar că ținta poate fi interogată. De asta urmează verificările de metrici.
+Baza se apără singură: `CHECK` pe fiecare câmp de stare (`incidents`, `alerts`, `investigations`, `evidences`), `NOT NULL` pe câmpurile esențiale și chei străine peste tot. Chiar dacă o greșeală scapă din cod, o valoare inventată nu intră.
 
-### Rezultat
+Fișierul are două părți: schema (`CREATE TABLE`, plus `ALTER TABLE` pentru `ai_diagnosis`, adăugat când a apărut M6) și un jurnal cu comenzile încercate de mână (`INSERT`, `JOIN`, `UPDATE`). A doua parte e un caiet de probe, nu un script: dacă îl rulezi încă o dată, dublezi datele de test.
 
-| Situație | Dovezi salvate | Status investigație |
+---
+
+## `database.py` — accesul la date
+
+Fiecare funcție care scrie are același ritm: conexiune nouă, operațiile, `commit`, iar dacă pică ceva `rollback` și eroarea e rearuncată ca FastAPI să o vadă. La final conexiunea se închide mereu. `PRAGMA foreign_keys = ON` rulează la fiecare conexiune, pentru că SQLite ignoră altfel cheile străine. Valorile intră prin `?`, niciodată lipite în SQL.
+
+| Zonă | Funcții |
+|---|---|
+| Citire | `get_incidents`, `get_incident` (întoarce `None` dacă nu există) |
+| Alerte | `save_alert`, `create_incident_for_alert`, `process_alert` |
+| Stări | `update_incident_status` |
+| Investigații | `create_investigation`, `finish_investigation`, `get_incident_router` |
+| Dovezi | `save_evidence` (dicționarul devine text JSON) |
+| AI | `save_ai_diagnosis`, `get_saved_ai_diagnosis` |
+
+### Alertele
+
+O alertă e identificată prin `(fingerprint, started_at)`. `save_alert` verifică ce există deja și alege:
+
+- nu există → `INSERT`, rezultat `created`
+- există, dar `state` sau `ended_at` s-au schimbat (de ex. `firing` → `resolved`) → `UPDATE`, rezultat `updated`
+- există și nimic nu s-a schimbat → nu scrie nimic, rezultat `duplicate`
+`process_alert` coordonatorul: salvează alerta și deschide un incident **doar** dacă alerta e nouă și `firing`. Repetările și rezolvările nu fac incidente în plus. Alerta, incidentul și legătura dintre ele se salvează sub același `commit`: ori toate, ori niciuna.
+
+### Starea incidentului
+
+Merge doar înainte, câte un pas, fără sărituri și fără întoarceri:
+
+`open → investigating → resolved → closed`
+
+La `closed` se completează și `closed_at`, în UTC (`2026-11-07T20:00:00Z`). Update-ul are `AND status = ?`, deci schimbă rândul doar dacă nimeni nu l-a modificat între timp. Dacă s-a întâmplat asta, primești `status_changed`. Același truc îl folosește `finish_investigation` (`AND status = 'running'`), care acceptă doar `completed` sau `failed`.
+
+### Cum raportează erorile
+
+Funcțiile de flux (`update_incident_status`, `finish_investigation`) întorc `{"success": False, "error": "..."}`. Cele de citire întorc `None`. `save_ai_diagnosis` aruncă excepții, pentru că un diagnostic nesalvat trebuie să oprească agentul, iar salvarea se face doar pentru o investigație `completed`.
+
+---
+
+## `main.py` — API-ul
+
+| Endpoint | Rol | Răspunsuri |
 |---|---|---|
-| Router UP | toate (node status + metrici) | `completed` |
-| Router DOWN | 1 (`prometheus_up`, `failed`) | `completed` |
-| Eroare în timpul rulării | cele salvate până atunci | `failed` |
+| `POST /webhook/alerts` | Primește alertele de la Alertmanager | `200`, `400` dacă `alerts` nu e listă |
+| `GET /incidents/{id}` | Citește un incident | `200`, `404` |
+| `PATCH /incidents/{id}/status` | Mută incidentul la pasul următor | `200`, `404`, `409`, `422` |
+| `POST /incidents/{id}/investigations` | Pornește investigația și, în fundal, diagnosticul AI | `201`, `404`, `422` |
+| `GET /investigations/{id}/diagnosis` | Citește diagnosticul | `200`, `404` |
 
+### Webhook-ul
 
-## Baza de date (SQLite)
+Alertmanager trimite alertele grupate, iar `main.py` nu are încredere oarbă în ele. Pentru fiecare:
 
-`alerts` · `incidents` · `incident_alerts` (legătura dintre ele) · `investigations` (M5) · `evidences` (M5)
+1. Sare peste ce nu e obiect JSON sau nu are `labels` și numără în `skipped`.
+2. Extrage câmpurile cu `.get()`, deci o cheie lipsă nu strică nimic.
+3. Transformă `endsAt` din `0001-01-01...` (alertă încă activă) în `None`.
+4. Sare peste alertele fără `fingerprint`, `alertname`, `startsAt` sau cu stare în afara `firing` / `resolved`.
+5. Află routerul: eticheta `router`, apoi dicționarul `ROUTERS` după `instance`, altfel `unknown`.
+6. Predă alerta lui `process_alert`.
+Răspunsul spune ce s-a întâmplat: `received`, numerele `created` / `updated` / `duplicate` / `skipped` și lista alertelor, fiecare cu `action`, `alert_id` și `incident_id` (`null` când nu s-a deschis niciun incident).
 
-## Ce urmează
+### Erorile
 
-1. **M6:** AI-ul folosește dovezile pentru ipoteze de cauză și recomandări.
-2. Curățenie: creare automată a bazei de date, lista de incidente și dovezi prin API, teste, `requirements.txt`, autentificare.
+`database.py` întoarce coduri textuale, `main.py` le face coduri HTTP:
+
+| Din `database.py` | HTTP | Înseamnă |
+|---|---|---|
+| `incident_not_found` | `404` | Nu există |
+| `invalid_transition` | `409` | Nu respectă fluxul de stări |
+| `status_changed` | `409` | Altcineva a schimbat starea între timp |
+| altceva | `400` | Cerere invalidă |
+
+Corpul `{"status": "investigating"}` e verificat de Pydantic (`IncidentStatusUpdate`); dacă forma e greșită, FastAPI răspunde singur `422`.
+
+### De ce diagnosticul rulează în fundal
+
+Modelul AI poate dura. De aceea `POST .../investigations` rulează Engine-ul, răspunde imediat `201` și pornește `diagnose` prin `BackgroundTasks`. Până e gata, `GET .../diagnosis` răspunde `404 „AI diagnosis not available yet"`.
+
+---
+
+## De știut
+
+- `closed_at` are două formate: `datetime('now')` din `data.sql` dă `2026-11-07 20:00:00`, iar Python scrie `2026-11-07T20:00:00Z`.
+- `alerts` nu are `UNIQUE (fingerprint, started_at)`, deci duplicatele sunt oprite doar de cod; două cereri simultane ar putea insera același episod.
+- `get_incident_router` folosește `fetchone()`: dacă un incident are mai multe alerte, primești doar primul router.
+- `read_incident` citește coloanele după poziție (`incident[0]`...); dacă se schimbă ordinea, răspunsul se strică fără eroare.
+- Linia `####...` din `data.sql` nu e comentariu SQL valid; ar trebui `--`.
+## Rulare
+
+Baza e în `data/incidents.db`, lângă `database.py`. Pornire: `uvicorn incident_manager.main:app`. Alertmanager trimite la `POST /webhook/alerts`. Routerele cunoscute sunt în `ROUTERS`: `192.168.122.247:9100` → `R1`, `192.168.122.195:9100` → `R2`.
+ 
