@@ -430,3 +430,38 @@ def save_ai_diagnosis(investigation_id: int, diagnosis: dict) -> bool:
 
     finally:
         connection.close()
+
+def get_saved_ai_diagnosis(investigation_id: int) -> dict | None:
+
+    # Read a previously saved AI diagnosis
+    conn = get_db_connection()
+
+    try:
+        row = conn.execute(
+            """
+            SELECT ai_diagnosis
+            FROM investigations
+            WHERE id = ?
+            """,
+            (investigation_id,)
+        ).fetchone()
+
+        # Investigation does not exist
+        if row is None:
+            return None
+
+        # Diagnosis may not be generated yet
+        diagnosis_json = row[0]
+
+        return {
+            "investigation_id": investigation_id,
+            "diagnosis": (
+                json.loads(diagnosis_json)
+                if diagnosis_json is not None
+                else None
+            )
+        }
+
+    finally:
+        conn.close()
+

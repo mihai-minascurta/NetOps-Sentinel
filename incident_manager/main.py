@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException , BackgroundTasks
 
 from pydantic import BaseModel
 
-from .database import process_alert, get_incident, update_incident_status
+from .database import process_alert, get_incident, update_incident_status, get_saved_ai_diagnosis
 
 from .investigation.engine import run_investigation
 
@@ -168,3 +168,4 @@ def create_investigation_incident(incident_id: int , background_tasks: Backgroun
     background_tasks.add_task(diagnose, investigation_id)
 
     return result
+
