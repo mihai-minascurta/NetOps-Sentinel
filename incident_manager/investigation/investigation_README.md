@@ -1,4 +1,4 @@
-# NetOps Sentinel — M5: Investigation Engine
+# Investigation Engine
 
 Partea care, pentru un incident deschis, **întreabă Prometheus ce se întâmplă cu routerul afectat și păstrează răspunsurile ca dovezi**.
 
