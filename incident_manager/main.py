@@ -1,11 +1,13 @@
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException , BackgroundTasks
 
 from pydantic import BaseModel
 
 from database import process_alert, get_incident, update_incident_status
 
 from investigation.engine import run_investigation
+
+from .AI_part.diagnosis import diagnose
 
 app = FastAPI(title="NetOps Sentinel - Incident Manager")
 
@@ -151,7 +153,7 @@ def update_status(incident_id: int, payload: IncidentStatusUpdate):
 
 # --------------------------------------------------------------------------- Starting an investigation for an incident and try to solve it...
 @app.post("/incidents/{incident_id}/investigations", status_code=201)
-def create_investigation_incident(incident_id: int):
+def create_investigation_incident(incident_id: int , background_tasks: BackgroundTasks):
 
     result = run_investigation(incident_id)
 
@@ -160,5 +162,9 @@ def create_investigation_incident(incident_id: int):
 
     if not result["success"]:
         raise HTTPException(status_code=422, detail=result["error"])
+
+    investigation_id = result["investigation_id"]
+
+    background_tasks.add_task(diagnose, investigation_id)
 
     return result
