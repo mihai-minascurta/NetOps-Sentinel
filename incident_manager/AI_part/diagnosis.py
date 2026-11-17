@@ -59,9 +59,20 @@ class AIDiagnosis(BaseModel):
     evidence_ids: list[int]
     recommendations: list[str]
 
+
+class AIDiagnosis(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    summary: str
+    probable_cause: str
+    confidence: Literal["low", "medium", "high"]
+    evidence_ids: list[int]
+    recommendations: list[str]
+
+
 async def diagnose(investigation_id: int):
 
-    # Check the investigation before starting AI
+    # Check the investigation
     investigation = get_investigation(investigation_id)
 
     if investigation is None:
@@ -105,13 +116,58 @@ async def diagnose(investigation_id: int):
 
             message = response.choices[0].message
 
-            # Stop if the model has finished
+            # Generate JSON when the model finishes
             if not message.tool_calls:
+
                 if not tool_executed or not message.content:
                     raise RuntimeError("AI returned no valid tool-based answer.")
 
-                print("AI response:", message.content)
-                return message.content
+                # Keep the model's final analysis
+                messages.append({
+                    "role": "assistant",
+                    "content": message.content
+                })
+
+                # Request the structured diagnosis
+                final_messages = [
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a network diagnostic assistant. "
+                            "Generate a diagnosis using only the MCP tool results. "
+                            "Do not invent measurements or evidence IDs. "
+                            "If the cause is unknown, use 'insufficient evidence'. "
+                            "Only reference evidence IDs returned by get_evidences. "
+                            "Recommendations must be non-destructive."
+                        )
+                    },
+                    *messages
+                ]
+
+                final_response = await llm_client.chat.completions.create(
+                    model=MODEL,
+                    messages=final_messages,
+                    response_format={
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "ai_diagnosis",
+                            "strict": True,
+                            "schema": AIDiagnosis.model_json_schema()
+                        }
+                    }
+                )
+
+                # Validate the generated JSON
+                final_text = final_response.choices[0].message.content
+
+                if not final_text:
+                    raise RuntimeError("AI returned an empty diagnosis.")
+
+                diagnosis = AIDiagnosis.model_validate_json(final_text)
+
+                print(diagnosis.model_dump_json(indent=2))
+
+                return diagnosis.model_dump()
 
             # Limit tool calls per response
             if len(message.tool_calls) > 4:
@@ -139,8 +195,10 @@ async def diagnose(investigation_id: int):
                 # Allow tools only for the current investigation
                 if tool_name in ("get_investigation", "get_evidences"):
                     expected = {"investigation_id": investigation_id}
+
                 elif tool_name in ("get_incident", "get_incident_alerts"):
                     expected = {"incident_id": incident_id}
+
                 else:
                     raise RuntimeError(f"Tool not allowed: {tool_name}")
 
