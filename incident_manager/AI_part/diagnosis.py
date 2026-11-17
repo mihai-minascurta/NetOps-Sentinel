@@ -45,7 +45,7 @@ def convert_mcp_tools(mcp_tools) -> list[dict]:
 
     return llm_tools
 
-async def main():
+async def main(investigation_id: int):
 
     async with Client(server_params) as client:
 
@@ -62,7 +62,7 @@ async def main():
             messages=[
                 {
                     "role": "user",
-                    "content": "Retrieve the details of investigation with ID 1."
+                    "content": f"Retrieve the details of investigation with ID {investigation_id}."
                 }
             ],
             tools=llm_tools,
