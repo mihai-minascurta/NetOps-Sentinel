@@ -1,5 +1,5 @@
 
-from incident_manager.AI_part import diagnosis_queries
+from . import diagnosis_queries
 from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 

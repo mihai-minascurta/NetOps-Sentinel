@@ -10,7 +10,7 @@ from mcp.types import TextContent
 from pydantic import BaseModel, ConfigDict
 from typing import Literal
 
-from diagnosis_queries import get_investigation
+from .diagnosis_queries import get_investigation
 
 # Path to the MCP Server
 PROJECT_ROOT = Path(__file__).resolve().parents[2]

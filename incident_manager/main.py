@@ -3,11 +3,11 @@ from fastapi import FastAPI, HTTPException , BackgroundTasks
 
 from pydantic import BaseModel
 
-from database import process_alert, get_incident, update_incident_status
+from .database import process_alert, get_incident, update_incident_status
 
-from investigation.engine import run_investigation
+from .investigation.engine import run_investigation
 
-from AI_part.diagnosis import diagnose
+from .AI_part.diagnosis import diagnose
 
 app = FastAPI(title="NetOps Sentinel - Incident Manager")
 
