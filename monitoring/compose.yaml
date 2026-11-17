@@ -11,11 +11,12 @@ services:
       - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus_data:/prometheus
     restart: unless-stopped
+    
     networks:
       - monitor-net
 
   grafana:
-  
+
     image: grafana/grafana:latest
     container_name: netops-grafana
     ports:
@@ -48,4 +49,3 @@ volumes:
 networks:
   monitor-net:
     driver: bridge
-    
