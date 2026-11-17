@@ -21,7 +21,7 @@ def get_incidents():
         rows = cursor.fetchall()  # list of tuples, one per incident
         return rows
     finally:
-        connection.close() 
+        connection.close()
 
 
 def get_incident(incident_id):
@@ -31,7 +31,7 @@ def get_incident(incident_id):
         # Look up a single incident by id.
         cursor = connection.execute(
             "SELECT * FROM incidents WHERE id = ?",  # ? placeholder: the value never becomes part of the SQL text
-            (incident_id,), 
+            (incident_id,),
         )
         return cursor.fetchone()  # a tuple if found, None if the id does not exist
     finally:
@@ -137,7 +137,7 @@ def process_alert(
         return {"alert_id": alert_id, "action": action, "incident_id": incident_id}
 
     except Exception:
-        connection.rollback() 
+        connection.rollback()
         raise # re-raise so the caller (FastAPI) still sees the error
 
     finally:
@@ -168,7 +168,7 @@ def update_incident_status(incident_id, new_status):
             return {"success": False, "error": "incident_not_found"}
 
         current_status = row[0]
-        allowed_status = ALLOWED_TRANSITIONS.get(current_status)  
+        allowed_status = ALLOWED_TRANSITIONS.get(current_status)
 
         # Reject transitions that are not the next step in the workflow.
         if allowed_status is None or new_status != allowed_status:
@@ -214,7 +214,7 @@ def update_incident_status(incident_id, new_status):
             "incident_id": incident_id,
             "old_status": current_status,
             "new_status": new_status,
-            "closed_at": closed_at,  
+            "closed_at": closed_at,
         }
 
     except Exception:
@@ -270,7 +270,7 @@ def save_evidence(investigation_id: int, check_type: str, status: str, result: d
 
     try:
         # SQLite cannot store a Python dict, so convert it to a JSON string first.
-        json_result = json.dumps(result) 
+        json_result = json.dumps(result)
         collected_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         cursor = connection.execute(
@@ -381,6 +381,52 @@ def get_incident_router(incident_id: int) -> str | None:
             return None
 
         return row[0]
+
+    finally:
+        connection.close()
+
+#-------------------------------------------------------------------------------Ai Diagnosis
+def save_ai_diagnosis(investigation_id: int, diagnosis: dict) -> bool:
+
+    # Validate input
+    if investigation_id <= 0:
+        raise ValueError("Invalid investigation ID.")
+
+    if not isinstance(diagnosis, dict):
+        raise ValueError("Diagnosis must be a dictionary.")
+
+    # Convert the diagnosis to JSON text
+    diagnosis_json = json.dumps(
+        diagnosis,
+        ensure_ascii=False,
+        allow_nan=False
+    )
+
+    connection = get_db_connection()
+
+    try:
+        # Save only for a completed investigation
+        cursor = connection.execute(
+            """
+            UPDATE investigations
+            SET ai_diagnosis = ?
+            WHERE id = ?
+              AND status = 'completed'
+            """,
+            (diagnosis_json, investigation_id)
+        )
+
+        if cursor.rowcount != 1:
+            raise RuntimeError(
+                "Investigation not found or not completed."
+            )
+
+        connection.commit()
+        return True
+
+    except Exception:
+        connection.rollback()
+        raise
 
     finally:
         connection.close()
