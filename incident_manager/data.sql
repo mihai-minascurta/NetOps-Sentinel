@@ -53,7 +53,7 @@ JOIN incident_alerts
     ON incidents.id = incident_alerts.incident_id
 JOIN alerts
     ON incident_alerts.alert_id = alerts.id
-WHERE incident_alerts.incident_id = 1; 
+WHERE incident_alerts.incident_id = 1;
 
 UPDATE incidents
 SET status = 'investigating'
@@ -90,7 +90,10 @@ CREATE TABLE evidences (
 
 SELECT a.router
 FROM incidents AS i
-JOIN incident_alerts AS ia 
+JOIN incident_alerts AS ia
     ON i.id = ia.incident_id
 JOIN alerts AS a
     ON a.id = ia.alert_id
+
+ALTER TABLE investigations
+ADD COLUMN ai_diagnosis TEXT;

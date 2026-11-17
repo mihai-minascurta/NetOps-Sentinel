@@ -7,6 +7,8 @@ from openai import AsyncOpenAI
 from pathlib import Path
 from mcp import Client, StdioServerParameters
 from mcp.types import TextContent
+from pydantic import BaseModel, ConfigDict
+from typing import Literal
 
 from diagnosis_queries import get_investigation
 
@@ -48,7 +50,14 @@ def convert_mcp_tools(mcp_tools) -> list[dict]:
     return llm_tools
 
 
+class AIDiagnosis(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
+    summary: str
+    probable_cause: str
+    confidence: Literal["low", "medium", "high"]
+    evidence_ids: list[int]
+    recommendations: list[str]
 
 async def diagnose(investigation_id: int):
 
