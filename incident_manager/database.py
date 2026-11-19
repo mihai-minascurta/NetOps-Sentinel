@@ -118,6 +118,32 @@ def create_incident_for_alert(connection, alert_id, severity, opened_at):
 
     return incident_id
 
+def resolve_incident_for_alert(connection, alert_id):
+
+    # Resolve incidents only when all linked alerts are resolved
+    cursor = connection.execute(
+        """
+        UPDATE incidents
+        SET status = 'resolved'
+        WHERE id IN (
+            SELECT incident_id
+            FROM incident_alerts
+            WHERE alert_id = ?
+        )
+        AND status IN ('open', 'investigating')
+        AND NOT EXISTS (
+            SELECT 1
+            FROM incident_alerts AS ia
+            JOIN alerts AS a ON a.id = ia.alert_id
+            WHERE ia.incident_id = incidents.id
+            AND a.state IS NOT 'resolved'
+        )
+        """,
+        (alert_id,)
+    )
+
+    return cursor.rowcount
+
 
 # Coordinator: saves the alert and, when needed, creates the incident,
 # all inside ONE transaction (everything is saved together or nothing is).
