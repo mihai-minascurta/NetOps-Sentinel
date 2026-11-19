@@ -9,16 +9,40 @@ from .investigation.engine import run_investigation
 
 from .AI_part.diagnosis import diagnose
 
+from starlette.concurrency import run_in_threadpool
+
+import logging
+
 app = FastAPI(title="NetOps Sentinel - Incident Manager")
 
 VALID_STATES = {"firing", "resolved"}
 
 ROUTERS = {"192.168.122.247:9100": "R1", "192.168.122.195:9100": "R2"}
 
+# --------------------------------------------------------------------------- Run investigation and diagnose in the same time with alerts / incidents
+async def investigate_and_diagnose(incident_id: int):
+
+    try:
+        # M5: Investigate the incident
+        result = await run_in_threadpool(
+            run_investigation, incident_id
+        )
+
+        if not result["success"]:
+            raise RuntimeError(f"Investigation failed: {result}")
+
+        # M6: Diagnose and save the result
+        await diagnose(result["investigation_id"])
+
+    except Exception:
+        logging.exception(
+            "Automatic investigation failed for incident %s",
+            incident_id
+        )
 
 # --------------------------------------------------------------------------- Webhook: receives alerts from AlertManager
 @app.post("/webhook/alerts")
-def receive_alerts(data: dict):
+def receive_alerts(data: dict , background_tasks: BackgroundTasks):
 
     # Alertmanager groups alerts, so the body must contain a list under "alerts".
     alerts = data.get("alerts")
@@ -85,6 +109,17 @@ def receive_alerts(data: dict):
             severity=severity,
             ended_at=ends_at,
         )
+
+        # Start automatic investigation for a new incident
+        if (
+            status == "firing"
+            and result["action"] == "created"
+            and result["incident_id"] is not None
+        ):
+            background_tasks.add_task(
+                investigate_and_diagnose,
+                result["incident_id"]
+            )
 
         action = result["action"]
         counts[action] += 1
