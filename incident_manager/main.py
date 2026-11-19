@@ -27,7 +27,12 @@ def receive_alerts(data: dict):
         raise HTTPException(status_code=400, detail="'alerts' must be a list")
 
     processed_alerts = []
-    counts = {"created": 0, "updated": 0, "duplicate": 0}
+    counts = {
+        "created": 0,
+        "updated": 0,
+        "duplicate": 0,
+        "unmatched": 0
+    }
     skipped = 0
 
     for alert in alerts:

@@ -57,6 +57,13 @@ def save_alert(
 
     existing_alert = cursor.fetchone()
 
+    # Do not create a new alert from an unmatched recovery
+    if existing_alert is None and status == "resolved":
+        print(
+            f"Unmatched recovery: {fingerprint}, {started_at}"
+        )
+        return None, "unmatched"
+
     # Case 1: the alert is new, so insert it.
     if existing_alert is None:
         cursor = connection.execute(
@@ -71,6 +78,10 @@ def save_alert(
 
     alert_id, old_status, old_ended_at = existing_alert
 
+    # Prevent reopening an already resolved alert episode
+    if old_status == "resolved":
+        return alert_id, "duplicate"
+
     # Case 2: the alert exists but its state or end time changed (e.g. firing -> resolved).
     if old_status != status or old_ended_at != ended_at:
         connection.execute(
@@ -81,7 +92,6 @@ def save_alert(
 
     # Case 3: same alert, same state, so this is a repeated notification and nothing is written.
     return alert_id, "duplicate"
-
 
 # Create an incident and link it to an alert.
 def create_incident_for_alert(connection, alert_id, severity, opened_at):
