@@ -168,6 +168,14 @@ def process_alert(
                 connection, alert_id, severity, started_at
             )
 
+        # Resolve associated incidents after alert recovery
+        if status == "resolved" and action in ("updated", "duplicate"):
+            resolved_count = resolve_incident_for_alert(
+                connection, alert_id
+            )
+
+            print("Incidents resolved:", resolved_count)
+
         # Step 3: single commit, so alert + incident + link become permanent together.
         connection.commit()
         return {"alert_id": alert_id, "action": action, "incident_id": incident_id}
