@@ -1,77 +1,110 @@
 
+import { useState } from 'react';
+
 import {
   ReactFlow,
   Background,
-  Controls,
   BackgroundVariant,
-  MarkerType,
-  type Node,
-  type Edge,
+  Controls,
 } from '@xyflow/react';
+
+import { Network, X, Info } from 'lucide-react';
+import DeviceNode from './components/DeviceNode';
+import { nodes, edges, type DeviceData } from './topology';
 
 import '@xyflow/react/style.css';
 import './App.css';
 
-const nodes: Node[] = [
-  {
-    id: 'r1',
-    position: { x: 50, y: 90 },
-    data: { label: 'R1 · Node Exporter' },
-  },
-  {
-    id: 'r2',
-    position: { x: 50, y: 280 },
-    data: { label: 'R2 · Node Exporter' },
-  },
-  {
-    id: 'prometheus',
-    position: { x: 300, y: 180 },
-    data: { label: 'Prometheus · R2' },
-  },
-  {
-    id: 'alertmanager',
-    position: { x: 530, y: 180 },
-    data: { label: 'Alertmanager · R2' },
-  },
-  {
-    id: 'backend',
-    position: { x: 770, y: 180 },
-    data: { label: 'Incident Manager · R2' },
-  },
-];
-
-const edges: Edge[] = [
-  { id: 'e1', source: 'r1', target: 'prometheus' },
-  { id: 'e2', source: 'r2', target: 'prometheus' },
-  { id: 'e3', source: 'prometheus', target: 'alertmanager' },
-  { id: 'e4', source: 'alertmanager', target: 'backend' },
-].map((edge) => ({
-  ...edge,
-  type: 'smoothstep',
-  markerEnd: { type: MarkerType.ArrowClosed },
-}));
+const nodeTypes = {
+  device: DeviceNode,
+};
 
 export default function App() {
+  const [selected, setSelected] = useState<DeviceData | null>(null);
+
   return (
-    <main className="app">
+    <div className="app-shell">
       <header className="app-header">
-        <h1>NetOps Sentinel</h1>
-        <span>Interactive Network Topology</span>
+        <div className="brand">
+          <Network size={24} />
+          <div>
+            <h1>NetOps Sentinel</h1>
+            <p>Interactive System Architecture</p>
+          </div>
+        </div>
+
+        <span className="preview-label">
+          Topology preview · Not live
+        </span>
       </header>
 
-      <section className="canvas">
+      <main className="workspace">
         <ReactFlow
           nodes={nodes}
           edges={edges}
+          nodeTypes={nodeTypes}
+          colorMode="dark"
           fitView
+          fitViewOptions={{ padding: 0.18 }}
           nodesDraggable={false}
           nodesConnectable={false}
+          edgesReconnectable={false}
+          deleteKeyCode={null}
+          minZoom={0.35}
+          maxZoom={1.8}
+          onNodeClick={(_, node) => {
+            if (node.type === 'device') {
+              setSelected(node.data as DeviceData);
+            }
+          }}
+          onPaneClick={() => setSelected(null)}
         >
-          <Background variant={BackgroundVariant.Dots} gap={24} />
-          <Controls />
+          <Background
+            variant={BackgroundVariant.Dots}
+            color="#26364c"
+            gap={25}
+            size={1}
+          />
+          <Controls showInteractive={false} />
         </ReactFlow>
-      </section>
-    </main>
+
+        <div className="canvas-hint">
+          <Info size={15} />
+          Click a component for details · Scroll to zoom
+        </div>
+
+        {selected && (
+          <aside className="details-panel">
+            <div className="details-top">
+              <span>COMPONENT DETAILS</span>
+              <button
+                onClick={() => setSelected(null)}
+                aria-label="Close details"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <h2>{selected.title}</h2>
+            <p className="details-subtitle">{selected.subtitle}</p>
+
+            <div className="details-divider" />
+
+            <h3>Role in the system</h3>
+            <p>{selected.description}</p>
+
+            <div className="details-note">
+              Architecture information — live status will be
+              connected in M6.2.
+            </div>
+          </aside>
+        )}
+      </main>
+
+      <footer className="app-footer">
+        <span>OCI · R1 + R2 · Docker · Prometheus · AI</span>
+        <span>No automatic remediation</span>
+      </footer>
+    </div>
   );
 }
-
