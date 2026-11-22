@@ -59,22 +59,27 @@ const diagramNodeIds = nodes.map((node) => node.id);
 const fitPadding = { top: 32, right: 32, bottom: 56, left: 32 };
 const minimumZoomRatio = 0.6;
 const zoomStep = 1.15;
+const panelTransitionMs = 240;
+
+type FitDimensions = { width: number; height: number; panelWidth: number };
 
 export default function App() {
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState(nodes);
   const [flow, setFlow] = useState<ReactFlowInstance<DiagramNode, TopologyEdgeType> | null>(null);
-  const [defaultZoom, setDefaultZoom] = useState<number | null>(null);
+  const [fittedZoom, setFittedZoom] = useState<number | null>(null);
+  const [isFitting, setIsFitting] = useState(false);
   const defaultViewport = useRef<Viewport | null>(null);
+  const lastFit = useRef<FitDimensions | null>(null);
+  const fitRequest = useRef(0);
   const workspaceRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
-  const previousPanelWidth = useRef(0);
   const focusOnClose = useRef<string | null>(null);
   const selected = flowNodes.find((node) => node.selected);
   const selectedDevice = selected?.type === 'device' ? selected : null;
   const selectedId = selectedDevice?.id;
   const panelOpen = selectedDevice !== null;
-  const minimumZoom = defaultZoom === null ? undefined : defaultZoom * minimumZoomRatio;
+  const minimumZoom = fittedZoom === null ? undefined : fittedZoom * minimumZoomRatio;
   const nodesMeasured = flowNodes.every((node) => node.measured?.width && node.measured.height);
 
   const graph = useMemo(() => {
@@ -101,52 +106,76 @@ export default function App() {
     };
   }, [flowNodes, selectedId]);
 
-  const fitDiagram = useCallback(() => {
+  const fitDiagram = useCallback((force = false) => {
     const workspace = workspaceRef.current;
     if (!flow || !workspace || !nodesMeasured) return;
 
-    // The workspace stays full width while the details panel is open.
     const { width, height } = workspace.getBoundingClientRect();
-    if (width <= fitPadding.left + fitPadding.right || height <= fitPadding.top + fitPadding.bottom) return;
+    const panelWidth = panelRef.current?.getBoundingClientRect().width ?? 0;
+    const availableWidth = width - panelWidth;
+    if (
+      availableWidth <= 0 ||
+      width <= fitPadding.left + fitPadding.right ||
+      height <= fitPadding.top + fitPadding.bottom
+    ) return;
+
+    const previous = lastFit.current;
+    const sameWorkspaceSize = previous?.width === width && previous.height === height;
+    if (!force && sameWorkspaceSize && previous.panelWidth === panelWidth) return;
 
     const bounds = flow.getNodesBounds(diagramNodeIds);
-    const fitted = getViewportForBounds(bounds, width, height, 0, Infinity, fitPadding);
-    const panelWidth = panelRef.current?.getBoundingClientRect().width ?? 0;
+    const closedViewport = sameWorkspaceSize && defaultViewport.current
+      ? defaultViewport.current
+      : getViewportForBounds(bounds, width, height, 0, Infinity, fitPadding);
+    const lateralPadding = Math.min(fitPadding.left, availableWidth / 8);
+    const fitted = panelWidth > 0
+      ? getViewportForBounds(bounds, availableWidth, height, 0, Infinity, {
+          ...fitPadding,
+          left: lateralPadding,
+          right: lateralPadding,
+        })
+      : closedViewport;
 
-    defaultViewport.current = fitted;
-    previousPanelWidth.current = panelWidth;
-    setDefaultZoom(fitted.zoom);
-    void flow.setViewport({ ...fitted, x: fitted.x - panelWidth }, { duration: 0 });
+    const panelChanged = previous !== null && (previous.panelWidth > 0) !== (panelWidth > 0);
+    const duration = panelChanged && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? panelTransitionMs
+      : 0;
+    const request = ++fitRequest.current;
+
+    defaultViewport.current = closedViewport;
+    lastFit.current = { width, height, panelWidth };
+    setFittedZoom(fitted.zoom);
+    setIsFitting(duration > 0);
+
+    const transition = flow.setViewport(fitted, { duration, interpolate: 'linear' });
+    if (duration > 0) {
+      void transition.then(() => {
+        if (fitRequest.current === request) setIsFitting(false);
+      });
+    }
   }, [flow, nodesMeasured]);
 
   useLayoutEffect(() => {
     const workspace = workspaceRef.current;
     if (!flow || !workspace || !nodesMeasured) return;
 
-    let width = 0;
-    let height = 0;
-    const observer = new ResizeObserver(([entry]) => {
-      const { width: nextWidth, height: nextHeight } = entry.contentRect;
-      if (nextWidth === width && nextHeight === height) return;
-
-      width = nextWidth;
-      height = nextHeight;
-      fitDiagram();
-    });
+    const observer = new ResizeObserver(() => fitDiagram());
     observer.observe(workspace);
+    const panel = panelOpen ? panelRef.current : null;
+    if (panel) observer.observe(panel, { box: 'border-box' });
     return () => observer.disconnect();
-  }, [fitDiagram, flow, nodesMeasured]);
+  }, [fitDiagram, flow, nodesMeasured, panelOpen]);
 
   function zoomBy(factor: number) {
     const workspace = workspaceRef.current;
-    if (!flow || !workspace || defaultZoom === null || minimumZoom === undefined) return;
+    if (!flow || !workspace || isFitting || fittedZoom === null || minimumZoom === undefined) return;
 
     const { x, y, zoom } = flow.getViewport();
-    const nextZoom = Math.min(defaultZoom, Math.max(minimumZoom, zoom * factor));
+    const nextZoom = Math.min(fittedZoom, Math.max(minimumZoom, zoom * factor));
     if (nextZoom === zoom) return;
 
     const { width, height } = workspace.getBoundingClientRect();
-    const centerX = (width - previousPanelWidth.current) / 2;
+    const centerX = (width - (lastFit.current?.panelWidth ?? 0)) / 2;
     const centerY = height / 2;
     const ratio = nextZoom / zoom;
 
@@ -180,33 +209,7 @@ export default function App() {
   }, [panelOpen, closeDetails]);
 
   useLayoutEffect(() => {
-    if (!flow) return;
-    const instance = flow;
-
-    function moveForPanel(panelWidth: number) {
-      const deltaX = previousPanelWidth.current - panelWidth;
-      if (deltaX === 0) return;
-
-      const viewport = instance.getViewport();
-      void instance.setViewport({ ...viewport, x: viewport.x + deltaX }, { duration: 0 });
-      previousPanelWidth.current = panelWidth;
-    }
-
-    const panel = panelOpen ? panelRef.current : null;
-    if (panel) {
-      const measure = () => moveForPanel(panel.getBoundingClientRect().width);
-      measure();
-      const observer = new ResizeObserver(measure);
-      observer.observe(panel, { box: 'border-box' });
-      return () => observer.disconnect();
-    }
-
-    if (previousPanelWidth.current !== 0) {
-      previousPanelWidth.current = 0;
-      if (defaultViewport.current) {
-        void instance.setViewport(defaultViewport.current, { duration: 0 });
-      }
-    }
+    if (panelOpen) return;
 
     const nodeId = focusOnClose.current;
     focusOnClose.current = null;
@@ -216,7 +219,7 @@ export default function App() {
       `.react-flow__node-device[data-id="${CSS.escape(nodeId)}"]`,
     );
     node?.focus({ preventScroll: true });
-  }, [flow, panelOpen]);
+  }, [panelOpen]);
 
   return (
     <div className="app-shell">
@@ -237,7 +240,7 @@ export default function App() {
       </header>
 
       <main ref={workspaceRef} className="workspace">
-        <div ref={canvasRef} className="topology-canvas" data-fit-ready={defaultZoom !== null}>
+        <div ref={canvasRef} className="topology-canvas" data-fit-ready={fittedZoom !== null}>
           <ReactFlow
             nodes={graph.nodes}
             edges={graph.edges}
@@ -259,7 +262,7 @@ export default function App() {
             selectionKeyCode={null}
             multiSelectionKeyCode={null}
             minZoom={minimumZoom}
-            maxZoom={defaultZoom ?? undefined}
+            maxZoom={fittedZoom ?? undefined}
             onNodesChange={onNodesChange}
             onInit={setFlow}
           >
@@ -271,11 +274,11 @@ export default function App() {
               size={0.8}
             />
             <CanvasControls
-              defaultZoom={defaultZoom}
-              minimumZoom={minimumZoom}
+              defaultZoom={isFitting ? null : fittedZoom}
+              minimumZoom={isFitting ? undefined : minimumZoom}
               onZoomIn={() => zoomBy(zoomStep)}
               onZoomOut={() => zoomBy(1 / zoomStep)}
-              onFit={fitDiagram}
+              onFit={() => fitDiagram(true)}
             />
           </ReactFlow>
 
