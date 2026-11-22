@@ -37,7 +37,7 @@ export default function TopologyEdge({
             className={[
               'topology-edge__label',
               label === 'scrape' && 'topology-edge__label--scrape',
-              data?.dimmed && 'is-outside-route',
+              data?.dimmed && 'topology-edge__label--dimmed',
             ].filter(Boolean).join(' ')}
             style={{ left: labelX, top: labelY }}
           >

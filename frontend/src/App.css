@@ -114,6 +114,15 @@ body {
   isolation: isolate;
 }
 
+.topology-canvas .react-flow__pane {
+  cursor: default;
+  touch-action: pan-y;
+}
+
+.topology-canvas[data-fit-ready='false'] .react-flow__viewport {
+  opacity: 0;
+}
+
 .stage-heading,
 .stage-continuation {
   display: flex;
@@ -327,14 +336,21 @@ body {
   }
 }
 
+/* Keep labels above edges elevated by React Flow. */
+.topology-canvas .react-flow__edgelabel-renderer {
+  z-index: 1001;
+}
+
 .topology-edge__label {
+  --edge-label-text: var(--color-text);
+  --edge-label-border: var(--color-border);
   position: absolute;
   transform: translate(-50%, -50%);
-  padding: 2px 6px;
-  border: 1px solid var(--color-border);
+  padding: 2px 8px;
+  border: 1px solid var(--edge-label-border);
   border-radius: var(--radius-pill);
-  background: var(--color-surface-raised);
-  color: var(--color-text);
+  background: var(--color-surface);
+  color: var(--edge-label-text);
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 500;
@@ -343,8 +359,13 @@ body {
 }
 
 .topology-edge__label--scrape {
-  background: var(--color-surface);
-  color: var(--color-text-muted);
+  --edge-label-text: var(--color-text-muted);
+  --edge-label-border: color-mix(in srgb, var(--color-border) 70%, var(--color-surface));
+}
+
+.topology-edge__label--dimmed {
+  color: color-mix(in srgb, var(--edge-label-text) 35%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--edge-label-border) 35%, var(--color-surface));
 }
 
 /* Canvas controls */
@@ -365,6 +386,16 @@ body {
 .react-flow__controls-button {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-control);
+}
+
+.react-flow__controls-button svg {
+  fill: none;
+}
+
+.react-flow__controls-button:disabled {
+  background: var(--color-bg);
+  color: color-mix(in srgb, var(--color-text-muted) 45%, var(--color-bg));
+  cursor: default;
 }
 
 .react-flow__controls-button:focus-visible {
