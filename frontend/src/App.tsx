@@ -43,7 +43,6 @@ export default function App() {
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
-          colorMode="dark"
           fitView
           fitViewOptions={{ padding: 0.18 }}
           nodesDraggable={false}
