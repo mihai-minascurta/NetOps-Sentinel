@@ -32,11 +32,24 @@ const icons: Record<DeviceKind, LucideIcon> = {
   mcp: Wrench,
 };
 
+const categories: Record<DeviceKind, { label: string; key: string }> = {
+  router: { label: 'Infrastructure', key: 'infrastructure' },
+  monitoring: { label: 'Monitoring', key: 'monitoring' },
+  alert: { label: 'Monitoring', key: 'monitoring' },
+  backend: { label: 'Application', key: 'application' },
+  investigation: { label: 'Application', key: 'application' },
+  evidence: { label: 'Application', key: 'application' },
+  ai: { label: 'AI', key: 'ai' },
+  database: { label: 'Storage', key: 'storage' },
+  mcp: { label: 'AI', key: 'ai' },
+};
+
 export default function DeviceNode({
   data,
   selected,
 }: NodeProps<DeviceNodeType>) {
   const Icon = icons[data.kind];
+  const category = categories[data.kind];
 
   return (
     <>
@@ -44,14 +57,17 @@ export default function DeviceNode({
       <Handle type="target" id="in-top" position={Position.Top} />
       <Handle type="target" id="in-bottom" position={Position.Bottom} />
 
-      <div className={`net-node net-node--${data.kind} ${selected ? 'is-selected' : ''}`}>
-        <div className="net-node__icon">
-          <Icon size={23} strokeWidth={1.8} />
-        </div>
+      <div className={`net-node net-node--${category.key} ${selected ? 'is-selected' : ''}`}>
+        <span className="net-node__category">{category.label}</span>
+        <div className="net-node__main">
+          <div className="net-node__icon">
+            <Icon size={20} strokeWidth={1.5} />
+          </div>
 
-        <div className="net-node__content">
-          <strong>{data.title}</strong>
-          <span>{data.subtitle}</span>
+          <div className="net-node__content">
+            <strong>{data.title}</strong>
+            <span>{data.subtitle}</span>
+          </div>
         </div>
       </div>
 

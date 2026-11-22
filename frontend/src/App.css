@@ -1,13 +1,30 @@
 
+:root {
+  color-scheme: dark;
+  --color-bg: #0E1013;
+  --color-surface: #151921;
+  --color-surface-raised: #1B2029;
+  --color-border: #2A313D;
+  --color-text: #E6E9EF;
+  --color-text-muted: #8A93A3;
+  --color-accent: #FFB020;
+  --color-success: #3DD68C;
+  --color-danger: #FF5C5C;
+  --color-info: #5B9DFF;
+  --canvas-dot: #20252D;
+  --font-ui: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  background: #0b1120;
-  color: #e6edf7;
-  font-family: Inter, system-ui, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-ui);
 }
 
 #root {
@@ -69,7 +86,7 @@ body {
 }
 
 .react-flow {
-  background: #0b1120;
+  background: var(--color-bg);
 }
 
 /* R2 host boundary */
@@ -85,64 +102,77 @@ body {
 
 /* Service nodes */
 .net-node {
-  --accent: #60a5fa;
-
-  width: 196px;
-  min-height: 92px;
+  --node-accent: #A8AEB7;
+  width: 300px;
+  min-height: 132px;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  justify-content: center;
   gap: 12px;
-  padding: 17px 14px;
-  background: #152136;
-  border: 1px solid #344862;
-  border-radius: 12px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.17);
-  transition: border-color 160ms, background 160ms;
+  padding: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--node-accent);
+  border-radius: 6px;
+  transition: border-color 160ms, transform 160ms;
 }
 
 .net-node:hover,
 .net-node.is-selected {
-  border-color: var(--accent);
-  background: #1b2c44;
+  border-color: var(--color-accent);
+  transform: translateY(-1px);
 }
 
-.net-node--router { --accent: #60a5fa; }
-.net-node--monitoring { --accent: #f59e0b; }
-.net-node--alert { --accent: #f87171; }
-.net-node--backend { --accent: #38bdf8; }
-.net-node--investigation { --accent: #a78bfa; }
-.net-node--evidence { --accent: #94a3b8; }
-.net-node--ai { --accent: #c084fc; }
-.net-node--database { --accent: #34d399; }
-.net-node--mcp { --accent: #818cf8; }
+.net-node--infrastructure { --node-accent: #A8AEB7; }
+.net-node--monitoring { --node-accent: #C6A66B; }
+.net-node--application { --node-accent: #B7A88D; }
+.net-node--storage { --node-accent: #9FA7A0; }
+.net-node--ai { --node-accent: #C19D68; }
+
+.net-node__category {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.net-node__main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
 
 .net-node__icon {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
-  border-radius: 10px;
-  background: rgba(148, 163, 184, 0.10);
-  color: var(--accent);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--node-accent);
 }
 
 .net-node__content {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
   min-width: 0;
 }
 
 .net-node__content strong {
-  font-size: 13px;
-  font-weight: 650;
-  color: #edf2fa;
+  color: var(--color-text);
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .net-node__content span {
-  font-size: 10px;
-  color: #9baec5;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
   line-height: 1.4;
 }
 

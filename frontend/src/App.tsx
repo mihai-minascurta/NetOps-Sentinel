@@ -60,8 +60,8 @@ export default function App() {
         >
           <Background
             variant={BackgroundVariant.Dots}
-            color="#26364c"
-            gap={25}
+            color="var(--canvas-dot)"
+            gap={24}
             size={1}
           />
           <Controls showInteractive={false} />
