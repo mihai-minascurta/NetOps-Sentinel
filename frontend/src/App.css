@@ -1,22 +1,22 @@
 :root {
-  color-scheme: dark;
-  --color-bg: #16211F;
-  --color-surface: #1D2A27;
-  --color-surface-raised: #25342F;
-  --color-surface-active: #2D3F36;
-  --color-border: #3A4D47;
-  --color-text: #DCE4DA;
-  --color-text-muted: #A8B5AD;
-  --color-text-dimmed: #A0ADA5;
-  --color-accent: #EBA886;
-  --color-edge: #7E9088;
-  --color-line-subtle: #6D8077;
-  --canvas-dot: #22302C;
+  color-scheme: light;
+  --canvas-gradient: linear-gradient(160deg, #F3E6C8 0%, #EBDAB4 55%, #E2CE9F 100%);
+  --color-bg: #EBDAB4;
+  --color-surface: #FFFBF0;
+  --color-surface-raised: #F7EFDB;
+  --color-surface-active: #FFDDBD;
+  --color-border: #3A3020;
+  --color-text: #14110C;
+  --color-text-muted: #463D2E;
+  --color-text-dimmed: #534939;
+  --color-accent: #B63908;
+  --color-edge: #4F4433;
+  --color-line-subtle: #6B5F49;
+  --canvas-dot: #C9B88F;
   --radius-small: 6px;
   --radius-control: 10px;
   --radius-panel: 12px;
   --radius-node: 0px;
-  --radius-host: 6px;
   --radius-pill: 999px;
   --font-display: "Bricolage Grotesque", var(--font-ui);
   --font-ui: "IBM Plex Sans", "Segoe UI", "Helvetica Neue", sans-serif;
@@ -27,9 +27,14 @@
   box-sizing: border-box;
 }
 
+body,
+.topology-canvas .react-flow {
+  background-color: var(--color-bg);
+  background-image: var(--canvas-gradient);
+}
+
 body {
   margin: 0;
-  background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-ui);
 }
@@ -114,14 +119,10 @@ body {
   opacity: 0;
 }
 
-.stage-heading,
-.stage-continuation {
+.stage-heading {
   display: flex;
   align-items: center;
   height: 100%;
-}
-
-.stage-heading {
   gap: 12px;
   color: var(--color-text-muted);
   font-family: var(--font-mono);
@@ -131,88 +132,49 @@ body {
   text-transform: uppercase;
 }
 
-.stage-heading::after,
-.stage-continuation > span {
-  flex: 1;
-  border-top: 1px solid var(--color-line-subtle);
-}
-
 .stage-heading::after {
   content: '';
   flex: 0 1 56px;
-}
-
-.stage-continuation {
-  gap: 32px;
-}
-
-/* Leave room for the two vertical links through this divider. */
-.stage-continuation > :first-child,
-.stage-continuation > :last-child {
-  flex: 0 0 128px;
-}
-
-/* R2 host boundary */
-.react-flow__node-group.r2-group {
-  background: color-mix(in srgb, var(--color-surface) 32%, transparent);
-  border: 1px dashed var(--color-line-subtle);
-  border-radius: var(--radius-host);
-}
-
-.r2-group__label {
-  position: absolute;
-  inset-block-start: 0;
-  inset-inline-start: 24px;
-  transform: translateY(-50%);
-  padding: 2px 8px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-small);
-  background: var(--color-bg);
-  color: var(--color-text-muted);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1.25;
-  white-space: nowrap;
+  border-top: 1px solid var(--color-line-subtle);
 }
 
 /* Service nodes */
 .net-node {
+  --node-shadow-color: var(--node-route-color, var(--color-border));
   width: 288px;
   height: 128px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 8px;
-  padding: 16px;
+  padding: 15.5px;
   background: var(--color-surface);
-  border: 1px solid var(--color-line-subtle);
-  border-inline-color: transparent;
+  border: 1.5px solid var(--node-shadow-color);
   border-radius: var(--radius-node);
+  box-shadow: 3px 3px 0 var(--node-shadow-color);
   transition: border-color 160ms, transform 160ms;
 }
 
-.net-node--key {
-  border-color: var(--color-edge);
-}
-
 .net-node:hover {
-  border-block-color: var(--color-text-muted);
+  border-block-color: var(--node-route-color, var(--color-text-muted));
   transform: translateY(-1px);
 }
 
 .net-node--key:hover {
-  border-color: var(--color-text-muted);
+  border-color: var(--node-route-color, var(--color-text-muted));
 }
 
 .net-node.is-selected {
+  --node-shadow-color: var(--color-accent);
   background: var(--color-surface-active);
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 1px var(--color-accent);
 }
 
 .react-flow__node-device:focus-visible .net-node {
-  box-shadow: 0 0 0 3px var(--color-bg), 0 0 0 5px var(--color-accent);
+  box-shadow:
+    3px 3px 0 var(--node-shadow-color),
+    0 0 0 3px var(--color-bg),
+    0 0 0 5px var(--color-accent);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -228,7 +190,7 @@ body {
 .net-node__category {
   color: var(--color-text-muted);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.08em;
   line-height: 1;
   text-transform: uppercase;
@@ -241,33 +203,13 @@ body {
   min-width: 0;
 }
 
-.net-node[data-category='infrastructure'] {
-  --category-color: #8FA6D6;
-}
-
-.net-node[data-category='monitoring'] {
-  --category-color: #7FB5A8;
-}
-
-.net-node[data-category='application'] {
-  --category-color: #B5C27A;
-}
-
-.net-node[data-category='storage'] {
-  --category-color: #D9A66C;
-}
-
-.net-node[data-category='ai'] {
-  --category-color: #C98FA8;
-}
-
 .net-node__icon {
   display: grid;
   place-items: center;
   width: 36px;
   height: 36px;
   flex-shrink: 0;
-  color: var(--category-color, var(--color-text-muted));
+  color: var(--color-text-muted);
 }
 
 .net-node__title {
@@ -286,6 +228,7 @@ body {
   color: var(--color-text-muted);
   font-family: var(--font-mono);
   font-size: 13px;
+  font-weight: 500;
   line-height: 1.4;
 }
 
@@ -297,22 +240,31 @@ body {
   height: 5px;
 }
 
-.react-flow__edge.is-outside-route .topology-edge__path {
-  stroke: var(--color-line-subtle);
+.react-flow__node-device.is-on-route {
+  --node-route-color: var(--color-accent);
+  --color-text: var(--color-accent);
+  --color-text-muted: var(--color-accent);
 }
 
 .react-flow__node-device.is-outside-route {
+  --node-route-color: var(--color-line-subtle);
   --color-surface: var(--color-bg);
   --color-text: var(--color-text-dimmed);
   --color-text-muted: var(--color-text-dimmed);
 }
 
-.react-flow__node-device.is-outside-route .net-node__icon {
-  color: var(--color-text-dimmed);
+.topology-edge__path.is-active,
+.topology-edge__label.is-active {
+  --edge-route-color: var(--color-accent);
+}
+
+.topology-edge__path.is-dimmed,
+.topology-edge__label.is-dimmed {
+  --edge-route-color: var(--color-line-subtle);
 }
 
 .topology-edge__path {
-  stroke: var(--color-edge);
+  stroke: var(--edge-route-color, var(--color-edge));
   stroke-width: 1.25;
 }
 
@@ -320,8 +272,7 @@ body {
   stroke-dasharray: 5 5;
 }
 
-.topology-edge--active .topology-edge__path {
-  stroke: var(--color-accent);
+.topology-edge__path.is-active {
   stroke-width: 1.5;
 }
 
@@ -336,14 +287,13 @@ body {
 
 .topology-edge__label {
   --edge-label-text: var(--color-text);
-  --edge-label-border: var(--color-border);
   position: absolute;
   transform: translate(-50%, -50%);
   padding: 2px 8px;
-  border: 1px solid var(--edge-label-border);
+  border: 1px solid var(--edge-route-color, var(--color-border));
   border-radius: var(--radius-pill);
   background: var(--color-surface);
-  color: var(--edge-label-text);
+  color: var(--edge-route-color, var(--edge-label-text));
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 500;
@@ -357,17 +307,6 @@ body {
 
 .topology-edge__label--scrape {
   --edge-label-text: var(--color-text-muted);
-  --edge-label-border: color-mix(in srgb, var(--color-border) 70%, var(--color-surface));
-}
-
-.topology-edge__label--active {
-  --edge-label-text: var(--color-accent);
-  --edge-label-border: color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
-}
-
-.topology-edge__label--dimmed {
-  color: var(--color-text-dimmed);
-  border-color: color-mix(in srgb, var(--edge-label-border) 35%, var(--color-surface));
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -433,7 +372,7 @@ body {
 .react-flow__controls-button:disabled {
   background: var(--color-bg);
   border-color: var(--color-border);
-  color: color-mix(in srgb, var(--color-text-muted) 45%, var(--color-bg));
+  color: color-mix(in srgb, var(--color-text-muted) 65%, var(--color-bg));
   cursor: default;
 }
 
@@ -447,8 +386,9 @@ body {
   flex: 0 0 320px;
   min-width: 0;
   padding: 16px 20px 24px;
+  padding-inline-start: 19.5px;
   overflow-y: auto;
-  border-inline-start: 1px solid var(--color-line-subtle);
+  border-inline-start: 1.5px solid var(--color-border);
   background: var(--color-surface-raised);
   font-size: 14px;
   line-height: 1.5;

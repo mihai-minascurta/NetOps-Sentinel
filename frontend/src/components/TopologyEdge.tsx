@@ -24,6 +24,7 @@ export default function TopologyEdge({
     targetPosition,
   });
   const vertical = Math.abs(targetY - sourceY) > Math.abs(targetX - sourceX);
+  const routeClassName = data?.routeState && `is-${data.routeState}`;
   const entranceDelay = Math.max(0, (entranceDelayByDevice.get(target) ?? 0) - 30);
   const entranceStyle = { '--entrance-delay': `${entranceDelay}ms` } as CSSProperties;
 
@@ -35,7 +36,7 @@ export default function TopologyEdge({
         markerEnd={markerEnd}
         pathLength={data?.readOnly ? undefined : 1}
         style={entranceStyle}
-        className={data?.readOnly ? 'topology-edge__path is-read-only' : 'topology-edge__path'}
+        className={['topology-edge__path', routeClassName, data?.readOnly && 'is-read-only'].filter(Boolean).join(' ')}
       />
       {label && (
         <EdgeLabelRenderer>
@@ -44,8 +45,7 @@ export default function TopologyEdge({
               'topology-edge__label',
               vertical && 'topology-edge__label--vertical',
               label === 'scrape' && 'topology-edge__label--scrape',
-              data?.active && 'topology-edge__label--active',
-              data?.dimmed && 'topology-edge__label--dimmed',
+              routeClassName,
             ].filter(Boolean).join(' ')}
             style={{ ...entranceStyle, left: vertical ? labelX + 12 : labelX, top: vertical ? labelY : labelY - 16 }}
           >

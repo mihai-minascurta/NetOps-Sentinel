@@ -8,6 +8,7 @@ export type DeviceKind =
   | 'router'
   | 'monitoring'
   | 'alert'
+  | 'notification'
   | 'backend'
   | 'investigation'
   | 'evidence'
@@ -24,11 +25,10 @@ export type DeviceData = {
 
 export type DeviceNodeType = Node<DeviceData, 'device'>;
 
-export type HostBoundaryNode = Node<{ label: string }, 'group'>;
-export type StageNode = Node<{ label?: string }, 'stage'>;
+export type StageNode = Node<{ label: string }, 'stage'>;
 
-export type DiagramNode = DeviceNodeType | HostBoundaryNode | StageNode;
-export type TopologyEdgeType = Edge<{ readOnly?: boolean; active?: boolean; dimmed?: boolean }, 'topology'>;
+export type DiagramNode = DeviceNodeType | StageNode;
+export type TopologyEdgeType = Edge<{ readOnly?: boolean; routeState?: 'active' | 'dimmed' }, 'topology'>;
 
 function device(
   id: string,
@@ -38,18 +38,16 @@ function device(
   description: string,
   x: number,
   y: number,
-  parentId?: string,
 ): DeviceNodeType {
   return {
     id,
     type: 'device',
     position: { x, y },
     data: { title, subtitle, kind, description },
-    ...(parentId ? { parentId, extent: 'parent' as const } : {}),
   };
 }
 
-function stage(id: string, x: number, y: number, width: number, label?: string): StageNode {
+function stage(id: string, x: number, y: number, width: number, label: string): StageNode {
   return {
     id,
     type: 'stage',
@@ -59,44 +57,34 @@ function stage(id: string, x: number, y: number, width: number, label?: string):
     selectable: false,
     focusable: false,
     deletable: false,
-    ...(label ? {} : { domAttributes: { 'aria-hidden': true } }),
   };
 }
 
 export const nodes: DiagramNode[] = [
-  {
-    id: 'r2-group',
-    type: 'group',
-    position: { x: -24, y: 192 },
-    style: { width: 1072, height: 400, pointerEvents: 'none' },
-    className: 'r2-group',
-    data: { label: 'Host: R2' },
-    selectable: false,
-    focusable: false,
-  },
-
   stage('stage-sources', 0, 0, 288, 'Sources'),
   stage('stage-monitoring', 368, 208, 128, 'Monitoring'),
   stage('stage-incident', 736, 416, 128, 'Incident'),
   stage('stage-analysis', 1104, 208, 152, 'AI Analysis'),
   stage('stage-storage', 1280, 0, 288, 'Storage'),
-  stage('incident-continuation', 736, 616, 656),
+  stage('incident-continuation', 736, 616, 128, 'Investigation'),
 
   device('r1', 'R1', 'Public VM · Node Exporter', 'router',
     'VM in the OCI public subnet. Exposes metrics for Prometheus.', 0, 24),
 
-  // Child positions are relative to the R2 boundary.
   device('r2', 'R2', 'Private VM · Node Exporter', 'router',
-    'Private OCI VM. Runs Node Exporter and hosts the Docker stack.', 24, 40, 'r2-group'),
+    'Private OCI VM. Runs Node Exporter and hosts the Docker stack.', 0, 232),
 
   device('prometheus', 'Prometheus', 'Metrics collection', 'monitoring',
-    'Periodically collects metrics from Node Exporter on R1 and R2.', 392, 40, 'r2-group'),
+    'Periodically collects metrics from Node Exporter on R1 and R2.', 368, 232),
 
   device('alertmanager', 'Alertmanager', 'Alert routing', 'alert',
-    'Receives alerts from Prometheus and sends webhooks to Incident Manager.', 392, 248, 'r2-group'),
+    'Receives alerts from Prometheus, sends webhooks to Incident Manager, and sends email notifications.', 368, 440),
 
   device('backend', 'Incident Manager', 'FastAPI · Docker', 'backend',
-    'Receives webhooks, manages incidents, and coordinates investigations.', 760, 248, 'r2-group'),
+    'Receives webhooks, manages incidents, and coordinates investigations.', 736, 440),
+
+  device('email', 'Email Notification', 'Gmail SMTP · TLS', 'notification',
+    'Sends alert and resolved notifications by email through Gmail SMTP.', 368, 648),
 
   device('investigation', 'Investigation', 'Python engine', 'investigation',
     'Runs checks and collects the information needed for diagnosis.', 736, 648),
@@ -128,8 +116,12 @@ export const componentMetadata: Record<string, { role: string; technology: strin
     technology: 'Prometheus',
   },
   alertmanager: {
-    role: 'Routes alerts to Incident Manager.',
+    role: 'Routes alerts to Incident Manager and sends email notifications.',
     technology: 'Alertmanager',
+  },
+  email: {
+    role: 'Email receiver for Alertmanager.',
+    technology: 'Gmail SMTP · smtp.gmail.com:587 · TLS',
   },
   backend: {
     role: 'Receives alerts and coordinates investigations.',
@@ -224,6 +216,9 @@ export const edges: TopologyEdgeType[] = [
     sourceHandle: 'out-bottom', targetHandle: 'in-top', label: 'alerts',
   }),
   link('alert-backend', 'alertmanager', 'backend', { label: 'webhook' }),
+  link('alert-email', 'alertmanager', 'email', {
+    sourceHandle: 'out-bottom', targetHandle: 'in-top', label: 'email',
+  }),
 
   link('backend-db', 'backend', 'db', { sourceHandle: 'out-top' }),
 
@@ -235,14 +230,16 @@ export const edges: TopologyEdgeType[] = [
 
   link('ai-db', 'ai', 'db', { targetHandle: 'in-bottom' }),
 
-  link('ai-mcp', 'ai', 'mcp', { sourceHandle: 'out-top', targetHandle: 'in-bottom', readOnly: true }),
+  link('ai-mcp', 'ai', 'mcp', {
+    sourceHandle: 'out-top', targetHandle: 'in-bottom', readOnly: true, label: 'read-only',
+  }),
 ];
 
 const entranceOrder = [
   ['r1', 'r2'],
   ['prometheus'],
   ['alertmanager'],
-  ['backend'],
+  ['backend', 'email'],
   ['investigation'],
   ['evidence'],
   ['ai'],

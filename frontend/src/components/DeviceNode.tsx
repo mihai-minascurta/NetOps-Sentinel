@@ -9,6 +9,7 @@ import {
   Server,
   Activity,
   Bell,
+  Mail,
   Workflow,
   Search,
   FileText,
@@ -24,6 +25,7 @@ const icons: Record<DeviceKind, LucideIcon> = {
   router: Server,
   monitoring: Activity,
   alert: Bell,
+  notification: Mail,
   backend: Workflow,
   investigation: Search,
   evidence: FileText,
@@ -36,6 +38,7 @@ const categories: Record<DeviceKind, string> = {
   router: 'Infrastructure',
   monitoring: 'Monitoring',
   alert: 'Monitoring',
+  notification: 'Notification',
   backend: 'Application',
   investigation: 'Application',
   evidence: 'Application',
@@ -64,7 +67,7 @@ export default function DeviceNode({
       <Handle type="target" id="in-top" position={Position.Top} />
       <Handle type="target" id="in-bottom" position={Position.Bottom} />
 
-      <div className={className} data-category={category.toLowerCase()} style={style}>
+      <div className={className} style={style}>
         <span className="net-node__category">{category}</span>
         <div className="net-node__main">
           <div className="net-node__icon">

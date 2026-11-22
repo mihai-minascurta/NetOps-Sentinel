@@ -23,7 +23,6 @@ import {
   getComponentRoute,
   nodes,
   type DiagramNode,
-  type HostBoundaryNode,
   type StageNode,
   type TopologyEdgeType,
 } from './topology';
@@ -31,27 +30,12 @@ import {
 import '@xyflow/react/style.css';
 import './App.css';
 
-function HostBoundary({ data }: NodeProps<HostBoundaryNode>) {
-  return <span className="r2-group__label">{data.label}</span>;
-}
-
 function Stage({ data }: NodeProps<StageNode>) {
-  if (data.label) {
-    return <div className="stage-heading">{data.label}</div>;
-  }
-
-  return (
-    <div className="stage-continuation">
-      <span />
-      <span />
-      <span />
-    </div>
-  );
+  return <div className="stage-heading">{data.label}</div>;
 }
 
 const nodeTypes = {
   device: DeviceNode,
-  group: HostBoundary,
   stage: Stage,
 };
 
@@ -94,24 +78,18 @@ export default function App() {
     const route = getComponentRoute(selectedId);
     return {
       nodes: flowNodes.map((node) => {
-        if (node.type !== 'device' || route.nodeIds.has(node.id)) return node;
-        return { ...node, className: 'is-outside-route' };
+        if (node.type !== 'device') return node;
+        return {
+          ...node,
+          className: route.nodeIds.has(node.id) ? 'is-on-route' : 'is-outside-route',
+        };
       }),
-      edges: edges.map((edge) => {
-        if (!route.edgeIds.has(edge.id)) {
-          return {
-            ...edge,
-            className: 'is-outside-route',
-            markerEnd: dimmedEdgeMarker,
-            data: { ...edge.data, dimmed: true },
-          };
-        }
-
+      edges: edges.map<TopologyEdgeType>((edge) => {
+        const routeState = route.edgeIds.has(edge.id) ? 'active' : 'dimmed';
         return {
           ...edge,
-          className: 'topology-edge--active',
-          markerEnd: activeEdgeMarker,
-          data: { ...edge.data, active: true },
+          markerEnd: routeState === 'active' ? activeEdgeMarker : dimmedEdgeMarker,
+          data: { ...edge.data, routeState },
         };
       }),
     };
@@ -289,6 +267,7 @@ export default function App() {
           onFocusCapture={finishEntrance}
         >
           <ReactFlow
+            forceColorMode="light"
             nodes={graph.nodes}
             edges={graph.edges}
             nodeTypes={nodeTypes}
@@ -315,7 +294,6 @@ export default function App() {
           >
             <Background
               variant={BackgroundVariant.Dots}
-              bgColor="var(--color-bg)"
               color="var(--canvas-dot)"
               gap={24}
               size={0.8}
