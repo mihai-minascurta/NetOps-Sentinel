@@ -61,14 +61,11 @@ export default function DeviceNode({
         <span className="net-node__category">{category.label}</span>
         <div className="net-node__main">
           <div className="net-node__icon">
-            <Icon size={20} strokeWidth={1.5} />
+            <Icon size={20} strokeWidth={1.5} aria-hidden="true" />
           </div>
-
-          <div className="net-node__content">
-            <strong>{data.title}</strong>
-            <span>{data.subtitle}</span>
-          </div>
+          <strong className="net-node__title">{data.title}</strong>
         </div>
+        <span className="net-node__subtitle">{data.subtitle}</span>
       </div>
 
       <Handle type="source" id="out-right" position={Position.Right} />

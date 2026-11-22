@@ -24,9 +24,11 @@ export type DeviceData = {
 
 export type DeviceNodeType = Node<DeviceData, 'device'>;
 
-type GroupNode = Node<{ label: string }, 'group'>;
+export type HostBoundaryNode = Node<{ label: string }, 'group'>;
+export type StageNode = Node<{ label?: string }, 'stage'>;
 
-export type DiagramNode = DeviceNodeType | GroupNode;
+export type DiagramNode = DeviceNodeType | HostBoundaryNode | StageNode;
+export type TopologyEdgeType = Edge<{ readOnly?: boolean; active?: boolean; dimmed?: boolean }, 'topology'>;
 
 function device(
   id: string,
@@ -47,88 +49,222 @@ function device(
   };
 }
 
+function stage(id: string, x: number, y: number, width: number, label?: string): StageNode {
+  return {
+    id,
+    type: 'stage',
+    position: { x, y },
+    data: { label },
+    style: { width, height: 16, pointerEvents: 'none' },
+    selectable: false,
+    focusable: false,
+    deletable: false,
+    ...(label ? {} : { domAttributes: { 'aria-hidden': true } }),
+  };
+}
+
 export const nodes: DiagramNode[] = [
   {
     id: 'r2-group',
     type: 'group',
-    position: { x: 360, y: 104 },
-    style: { width: 960, height: 400 },
+    position: { x: -24, y: 192 },
+    style: { width: 1072, height: 400, pointerEvents: 'none' },
     className: 'r2-group',
     data: { label: 'Host: R2' },
+    selectable: false,
+    focusable: false,
   },
 
-  device('r1', 'R1', 'Public VM · Node Exporter', 'router',
-    'VM în subnetul public OCI. Expune metrici pentru Prometheus.', 40, 300),
+  stage('stage-sources', 0, 0, 288, 'Sources'),
+  stage('stage-monitoring', 368, 208, 128, 'Monitoring'),
+  stage('stage-incident', 736, 0, 288, 'Incident'),
+  stage('stage-analysis', 1104, 208, 152, 'AI Analysis'),
+  stage('stage-storage', 1280, 0, 288, 'Storage'),
+  stage('incident-continuation', 736, 616, 656),
 
+  device('r1', 'R1', 'Public VM · Node Exporter', 'router',
+    'VM in the OCI public subnet. Exposes metrics for Prometheus.', 0, 24),
+
+  // Child positions are relative to the R2 boundary.
   device('r2', 'R2', 'Private VM · Node Exporter', 'router',
-    'VM privată OCI. Rulează Node Exporter și găzduiește stack-ul Docker.', 40, 240, 'r2-group'),
+    'Private OCI VM. Runs Node Exporter and hosts the Docker stack.', 24, 40, 'r2-group'),
 
   device('prometheus', 'Prometheus', 'Metrics collection', 'monitoring',
-    'Colectează periodic metrici de la Node Exporter pe R1 și R2.', 40, 40, 'r2-group'),
+    'Periodically collects metrics from Node Exporter on R1 and R2.', 392, 40, 'r2-group'),
 
   device('alertmanager', 'Alertmanager', 'Alert routing', 'alert',
-    'Primește alertele de la Prometheus și trimite webhook-uri către Incident Manager.', 380, 40, 'r2-group'),
+    'Receives alerts from Prometheus and sends webhooks to Incident Manager.', 392, 248, 'r2-group'),
 
   device('backend', 'Incident Manager', 'FastAPI · Docker', 'backend',
-    'Primește webhook-uri, gestionează incidente și coordonează investigațiile.', 720, 40, 'r2-group'),
+    'Receives webhooks, manages incidents, and coordinates investigations.', 760, 248, 'r2-group'),
 
   device('investigation', 'Investigation', 'Python engine', 'investigation',
-    'Execută verificările și colectează informațiile necesare diagnosticului.', 720, 560),
+    'Runs checks and collects the information needed for diagnosis.', 736, 648),
 
   device('evidence', 'Evidences', 'Collected results', 'evidence',
-    'Rezultatele verificărilor sunt structurate și salvate pentru investigație.', 1060, 560),
+    'Check results are structured and stored for the investigation.', 1104, 648),
 
   device('ai', 'AI Diagnosis', 'NVIDIA inference API', 'ai',
-    'Analizează dovezile și generează o explicație, nivel de încredere și recomandări.', 1400, 560),
+    'Analyzes evidence and produces an explanation, a confidence level, and recommendations.', 1104, 440),
 
   device('mcp', 'MCP Tools', 'Read-only investigation tools', 'mcp',
-    'Expune instrumente pentru citirea incidentelor, investigațiilor și dovezilor.', 1400, 760),
+    'Exposes tools for reading incidents, investigations, and evidence.', 1104, 232),
 
   device('db', 'SQLite Database', 'Persistent Docker volume · R2', 'database',
-    'Stochează alertele, incidentele, investigațiile, dovezile și diagnosticele AI.', 1400, 300),
+    'The database file is data/incidents.db within Incident Manager. Saved AI diagnoses are stored as JSON on the corresponding completed investigation records.', 1280, 24),
 ];
+
+export const componentMetadata: Record<string, { role: string; technology: string }> = {
+  r1: {
+    role: 'Exports metrics from the public OCI VM.',
+    technology: 'OCI VM · Node Exporter',
+  },
+  r2: {
+    role: 'Exports metrics and hosts the Docker stack.',
+    technology: 'OCI VM · Node Exporter',
+  },
+  prometheus: {
+    role: 'Collects metrics and evaluates alert rules.',
+    technology: 'Prometheus',
+  },
+  alertmanager: {
+    role: 'Routes alerts to Incident Manager.',
+    technology: 'Alertmanager',
+  },
+  backend: {
+    role: 'Receives alerts and coordinates investigations.',
+    technology: 'FastAPI · Docker',
+  },
+  investigation: {
+    role: 'Runs checks and collects evidence for diagnosis.',
+    technology: 'Python · Prometheus queries',
+  },
+  evidence: {
+    role: 'Records the results of investigation checks.',
+    technology: 'SQLite · JSON',
+  },
+  ai: {
+    role: 'Analyzes evidence and generates a diagnosis.',
+    technology: 'Python · NVIDIA inference API',
+  },
+  mcp: {
+    role: 'Exposes read-only tools for incident and investigation data.',
+    technology: 'Python · MCPServer',
+  },
+  db: {
+    role: 'Stores alerts, incidents, investigations, evidence, and diagnoses.',
+    technology: 'SQLite · Docker volume',
+  },
+};
+
+export const componentPorts: Partial<Record<string, number>> = {
+  r1: 9100,
+  r2: 9100,
+  prometheus: 9090,
+  alertmanager: 9093,
+  backend: 8000,
+};
+
+const edgeMarker = {
+  type: MarkerType.ArrowClosed,
+  width: 12,
+  height: 12,
+  color: 'var(--color-edge)',
+};
+
+export const activeEdgeMarker = { ...edgeMarker, color: 'var(--color-accent)' };
+
+type LinkOptions = {
+  sourceHandle?: string;
+  targetHandle?: string;
+  label?: string;
+  readOnly?: boolean;
+};
 
 function link(
   id: string,
   source: string,
   target: string,
-  sourceHandle = 'out-right',
-  targetHandle = 'in-left',
-  dashed = false,
-): Edge {
+  {
+    sourceHandle = 'out-right',
+    targetHandle = 'in-left',
+    label,
+    readOnly,
+  }: LinkOptions = {},
+): TopologyEdgeType {
   return {
     id,
     source,
     target,
     sourceHandle,
     targetHandle,
-    type: 'smoothstep',
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      color: '#7187a4',
-    },
-    style: {
-      stroke: '#7187a4',
-      strokeWidth: 1.8,
-      ...(dashed ? { strokeDasharray: '6 6' } : {}),
-    },
+    type: 'topology',
+    label,
+    markerEnd: edgeMarker,
+    data: { readOnly },
   };
 }
 
-export const edges: Edge[] = [
-  link('r1-prom', 'r1', 'prometheus'),
-  link('r2-prom', 'r2', 'prometheus', 'out-top', 'in-bottom'),
+export const edges: TopologyEdgeType[] = [
+  link('r1-prom', 'r1', 'prometheus', { targetHandle: 'in-top', label: 'scrape' }),
+  link('r2-prom', 'r2', 'prometheus', { label: 'scrape' }),
 
-  link('prom-alert', 'prometheus', 'alertmanager'),
-  link('alert-backend', 'alertmanager', 'backend'),
+  link('prom-alert', 'prometheus', 'alertmanager', {
+    sourceHandle: 'out-bottom', targetHandle: 'in-top', label: 'alerts',
+  }),
+  link('alert-backend', 'alertmanager', 'backend', { label: 'webhook' }),
 
-  link('backend-db', 'backend', 'db'),
+  link('backend-db', 'backend', 'db', { sourceHandle: 'out-top' }),
 
-  link('backend-inv', 'backend', 'investigation', 'out-bottom', 'in-top'),
+  link('backend-inv', 'backend', 'investigation', { sourceHandle: 'out-bottom', targetHandle: 'in-top' }),
   link('inv-evidence', 'investigation', 'evidence'),
-  link('evidence-ai', 'evidence', 'ai'),
+  link('evidence-ai', 'evidence', 'ai', {
+    sourceHandle: 'out-top', targetHandle: 'in-bottom', label: 'evidence',
+  }),
 
-  link('ai-db', 'ai', 'db', 'out-top', 'in-bottom'),
+  link('ai-db', 'ai', 'db', { targetHandle: 'in-bottom' }),
 
-  link('ai-mcp', 'ai', 'mcp', 'out-bottom', 'in-top', true),
+  link('ai-mcp', 'ai', 'mcp', { sourceHandle: 'out-top', targetHandle: 'in-bottom', readOnly: true }),
 ];
+
+const deviceTitles = new Map(
+  nodes.filter((node) => node.type === 'device').map((node) => [node.id, node.data.title]),
+);
+
+export function getComponentConnections(selectedId: string) {
+  function describe(edge: TopologyEdgeType, deviceId: string) {
+    return { id: edge.id, title: deviceTitles.get(deviceId) ?? deviceId, label: edge.label };
+  }
+
+  return {
+    inputs: edges.filter((edge) => edge.target === selectedId).map((edge) => describe(edge, edge.source)),
+    outputs: edges.filter((edge) => edge.source === selectedId).map((edge) => describe(edge, edge.target)),
+  };
+}
+
+export function getComponentRoute(selectedId: string) {
+  const nodeIds = new Set([selectedId]);
+  const edgeIds = new Set<string>();
+
+  // Walk the two directions independently so unrelated branches stay dimmed.
+  for (const [from, to] of [['source', 'target'], ['target', 'source']] as const) {
+    const pending = [selectedId];
+    const visited = new Set(pending);
+
+    for (const id of pending) {
+      for (const edge of edges) {
+        if (edge[from] !== id) continue;
+
+        edgeIds.add(edge.id);
+        const nextId = edge[to];
+        if (visited.has(nextId)) continue;
+
+        visited.add(nextId);
+        nodeIds.add(nextId);
+        pending.push(nextId);
+      }
+    }
+  }
+
+  return { nodeIds, edgeIds };
+}
