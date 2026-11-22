@@ -31,7 +31,7 @@ export default function ComponentDetails({ device, panelRef, onClose }: Componen
           <dt>Role in the system</dt>
           <dd>{role}</dd>
         </div>
-        {technology !== title && (
+        {technology !== title && technology !== subtitle && (
           <div>
             <dt>Technology</dt>
             <dd>{technology}</dd>
@@ -74,7 +74,7 @@ export default function ComponentDetails({ device, panelRef, onClose }: Componen
       </section>
 
       <p className="details-note">
-        Architecture information — live status will be connected in M6.2.
+        Architecture reference
       </p>
     </aside>
   );

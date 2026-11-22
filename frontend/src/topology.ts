@@ -77,7 +77,7 @@ export const nodes: DiagramNode[] = [
 
   stage('stage-sources', 0, 0, 288, 'Sources'),
   stage('stage-monitoring', 368, 208, 128, 'Monitoring'),
-  stage('stage-incident', 736, 0, 288, 'Incident'),
+  stage('stage-incident', 736, 416, 128, 'Incident'),
   stage('stage-analysis', 1104, 208, 152, 'AI Analysis'),
   stage('stage-storage', 1280, 0, 288, 'Storage'),
   stage('incident-continuation', 736, 616, 656),
@@ -172,7 +172,13 @@ const edgeMarker = {
   color: 'var(--color-edge)',
 };
 
-export const activeEdgeMarker = { ...edgeMarker, color: 'var(--color-accent)' };
+export const activeEdgeMarker = {
+  ...edgeMarker,
+  width: 24,
+  height: 24,
+  markerUnits: 'userSpaceOnUse',
+  color: 'var(--color-accent)',
+};
 
 type LinkOptions = {
   sourceHandle?: string;
@@ -226,6 +232,21 @@ export const edges: TopologyEdgeType[] = [
 
   link('ai-mcp', 'ai', 'mcp', { sourceHandle: 'out-top', targetHandle: 'in-bottom', readOnly: true }),
 ];
+
+const entranceOrder = [
+  ['r1', 'r2'],
+  ['prometheus'],
+  ['alertmanager'],
+  ['backend'],
+  ['investigation'],
+  ['evidence'],
+  ['ai'],
+  ['db', 'mcp'],
+];
+
+export const entranceDelayByDevice = new Map(
+  entranceOrder.flatMap((devices, step) => devices.map((id) => [id, step * 45] as const)),
+);
 
 const deviceTitles = new Map(
   nodes.filter((node) => node.type === 'device').map((node) => [node.id, node.data.title]),

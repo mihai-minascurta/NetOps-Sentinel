@@ -1,25 +1,25 @@
 :root {
   color-scheme: dark;
-  --color-bg: #0E1013;
-  --color-surface: #151921;
-  --color-surface-raised: #1B2029;
-  --color-border: #2A313D;
-  --color-text: #E6E9EF;
-  --color-text-muted: #8A93A3;
-  --color-accent: #FFB020;
-  --color-edge: #677282;
-  --color-success: #3DD68C;
-  --color-danger: #FF5C5C;
-  --color-info: #5B9DFF;
-  --canvas-dot: #1C222B;
+  --color-bg: #111210;
+  --color-surface: #191A17;
+  --color-surface-raised: #222420;
+  --color-surface-active: #272D19;
+  --color-border: #3E4239;
+  --color-text: #EFF1E8;
+  --color-text-muted: #A7AD9C;
+  --color-text-dimmed: #939A88;
+  --color-accent: #BED272;
+  --color-edge: #777F6D;
+  --canvas-dot: #2B2E27;
   --radius-small: 6px;
   --radius-control: 10px;
   --radius-panel: 12px;
-  --radius-node: 14px;
-  --radius-host: 20px;
+  --radius-node: 0px;
+  --radius-host: 6px;
   --radius-pill: 999px;
-  --font-ui: "IBM Plex Sans", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-display: "Bricolage Grotesque", var(--font-ui);
+  --font-ui: "IBM Plex Sans", "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-mono: "JetBrains Mono", Menlo, Consolas, monospace;
 }
 
 * {
@@ -49,7 +49,7 @@ body {
   height: 64px;
   flex-shrink: 0;
   border-bottom: 1px solid var(--color-border);
-  background: var(--color-surface);
+  background: var(--color-bg);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -57,42 +57,27 @@ body {
   padding: 0 24px;
 }
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.brand-mark {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-control);
-  background: var(--color-surface-raised);
-  color: var(--color-text-muted);
-}
-
 .brand h1 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.brand-wordmark {
+  display: block;
+  width: 152px;
+  height: auto;
 }
 
 .brand p {
-  margin: 2px 0 0;
+  margin: 4px 0 0;
   color: var(--color-text-muted);
-  font-size: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
 }
 
 .preview-label {
-  padding: 4px 9px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
+  padding-inline-start: 12px;
+  border-inline-start: 1px solid var(--color-border);
   color: var(--color-text-muted);
   font-family: var(--font-mono);
   font-size: 11px;
@@ -107,11 +92,16 @@ body {
 }
 
 .topology-canvas {
+  --xy-attribution-background-color: var(--color-bg);
   position: relative;
   flex: 1;
   min-width: 0;
   overflow: hidden;
   isolation: isolate;
+}
+
+.topology-canvas .react-flow__attribution a {
+  color: var(--color-text-muted);
 }
 
 .topology-canvas .react-flow__pane {
@@ -148,6 +138,7 @@ body {
 
 .stage-heading::after {
   content: '';
+  flex: 0 1 56px;
 }
 
 .stage-continuation {
@@ -162,7 +153,7 @@ body {
 
 /* R2 host boundary */
 .react-flow__node-group.r2-group {
-  background: rgba(21, 25, 33, 0.32);
+  background: color-mix(in srgb, var(--color-surface) 32%, transparent);
   border: 1px dashed var(--color-border);
   border-radius: var(--radius-host);
 }
@@ -186,8 +177,6 @@ body {
 
 /* Service nodes */
 .net-node {
-  --node-accent: #A8AEB7;
-  position: relative;
   width: 288px;
   height: 128px;
   display: flex;
@@ -197,31 +186,26 @@ body {
   padding: 16px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
+  border-inline-color: transparent;
   border-radius: var(--radius-node);
   transition: border-color 160ms, transform 160ms;
 }
 
-.net-node::before {
-  position: absolute;
-  inset-block: 16px;
-  inset-inline-start: 5px;
-  width: 3px;
-  border-radius: var(--radius-pill);
-  background: var(--node-accent);
-  pointer-events: none;
-  content: '';
-}
-
-.net-node:hover,
-.net-node.is-selected {
-  border-color: var(--color-accent);
+.net-node--key {
+  border-color: var(--color-edge);
 }
 
 .net-node:hover {
+  border-block-color: var(--color-text-muted);
   transform: translateY(-1px);
 }
 
+.net-node--key:hover {
+  border-color: var(--color-text-muted);
+}
+
 .net-node.is-selected {
+  border-color: var(--color-accent);
   box-shadow: 0 0 0 1px var(--color-accent);
 }
 
@@ -238,12 +222,6 @@ body {
     transform: none;
   }
 }
-
-.net-node--infrastructure { --node-accent: #A8AEB7; }
-.net-node--monitoring { --node-accent: #C6A66B; }
-.net-node--application { --node-accent: #B7A88D; }
-.net-node--storage { --node-accent: #9FA7A0; }
-.net-node--ai { --node-accent: #C19D68; }
 
 .net-node__category {
   color: var(--color-text-muted);
@@ -267,16 +245,19 @@ body {
   width: 36px;
   height: 36px;
   flex-shrink: 0;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-control);
-  color: var(--node-accent);
+  color: var(--color-text-muted);
 }
 
 .net-node__title {
   color: var(--color-text);
+  font-family: var(--font-display);
   font-size: 20px;
   font-weight: 600;
   line-height: 1.2;
+}
+
+.net-node--key .net-node__title {
+  font-weight: 700;
 }
 
 .net-node__subtitle {
@@ -294,13 +275,19 @@ body {
   height: 5px;
 }
 
-.is-outside-route {
+.react-flow__edge.is-outside-route {
   opacity: 0.35;
+}
+
+.react-flow__node-device.is-outside-route {
+  --color-surface: var(--color-bg);
+  --color-text: var(--color-text-dimmed);
+  --color-text-muted: var(--color-text-dimmed);
 }
 
 .topology-edge__path {
   stroke: var(--color-edge);
-  stroke-width: 1.5;
+  stroke-width: 1.25;
 }
 
 .topology-edge__path.is-read-only {
@@ -309,31 +296,11 @@ body {
 
 .topology-edge--active .topology-edge__path {
   stroke: var(--color-accent);
+  stroke-width: 1.5;
 }
 
 .react-flow__edge-topology:focus-visible .topology-edge__path {
   stroke-width: 2.5;
-}
-
-.topology-edge__motion {
-  fill: none;
-  stroke: var(--color-accent);
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-dasharray: 0.5 27.5;
-  pointer-events: none;
-  animation: topology-edge-motion 1600ms linear infinite;
-}
-
-@keyframes topology-edge-motion {
-  to { stroke-dashoffset: -28; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .topology-edge__motion {
-    display: none;
-    animation: none;
-  }
 }
 
 /* Keep labels above edges elevated by React Flow. */
@@ -358,14 +325,59 @@ body {
   white-space: nowrap;
 }
 
+.topology-edge__label--vertical {
+  transform: translateY(-50%);
+}
+
 .topology-edge__label--scrape {
   --edge-label-text: var(--color-text-muted);
   --edge-label-border: color-mix(in srgb, var(--color-border) 70%, var(--color-surface));
 }
 
+.topology-edge__label--active {
+  --edge-label-text: var(--color-accent);
+  --edge-label-border: color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
+}
+
 .topology-edge__label--dimmed {
-  color: color-mix(in srgb, var(--edge-label-text) 35%, var(--color-surface));
+  color: var(--color-text-dimmed);
   border-color: color-mix(in srgb, var(--edge-label-border) 35%, var(--color-surface));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .topology-canvas[data-entering='true'] .net-node {
+    animation: topology-entrance-fade 140ms ease-out var(--entrance-delay) both;
+  }
+
+  .topology-canvas[data-entering='true'] .topology-edge__path {
+    animation: topology-entrance-draw 130ms ease-out var(--entrance-delay) both;
+  }
+
+  .topology-canvas[data-entering='true'] .topology-edge__path.is-read-only {
+    animation-name: topology-entrance-fade;
+  }
+
+  .topology-canvas[data-entering='true'] .topology-edge__label {
+    animation: topology-entrance-fade 1ms step-end calc(var(--entrance-delay) + 130ms) both;
+  }
+}
+
+@keyframes topology-entrance-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes topology-entrance-draw {
+  from {
+    opacity: 0;
+    stroke-dasharray: 1 1;
+    stroke-dashoffset: 1;
+  }
+  to {
+    opacity: 1;
+    stroke-dasharray: 1 1;
+    stroke-dashoffset: 0;
+  }
 }
 
 /* Canvas controls */
@@ -409,9 +421,8 @@ body {
   min-width: 0;
   padding: 16px 20px 24px;
   overflow-y: auto;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-panel);
-  background: var(--color-surface);
+  border-inline-start: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -442,7 +453,7 @@ body {
 }
 
 .details-top button:hover {
-  background: var(--color-surface-raised);
+  background: var(--color-surface);
   color: var(--color-text);
 }
 
@@ -453,8 +464,9 @@ body {
 
 .details-panel h2 {
   margin: 12px 0 4px;
-  font-size: 24px;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
   line-height: 1.2;
 }
 
@@ -476,6 +488,14 @@ body {
   margin-top: 20px;
 }
 
+.details-facts > div:not(:first-child),
+.details-connections > div {
+  display: grid;
+  grid-template-columns: minmax(64px, 30%) minmax(0, 1fr);
+  column-gap: 12px;
+  align-items: baseline;
+}
+
 .details-panel dt {
   color: var(--color-text-muted);
   font-size: 13px;
@@ -486,11 +506,6 @@ body {
 }
 
 .details-panel code {
-  display: inline-block;
-  padding: 1px 6px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
-  background: var(--color-surface-raised);
   color: var(--color-text-muted);
   font-family: var(--font-mono);
   font-size: 12px;
@@ -557,7 +572,7 @@ body {
   gap: 2px 12px;
   padding: 0 24px;
   border-top: 1px solid var(--color-border);
-  background: var(--color-surface);
+  background: var(--color-bg);
   color: var(--color-text-muted);
   font-family: var(--font-mono);
   font-size: 11px;

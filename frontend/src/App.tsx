@@ -11,7 +11,7 @@ import {
   type Viewport,
 } from '@xyflow/react';
 
-import { Network, Info } from 'lucide-react';
+import { Info } from 'lucide-react';
 import CanvasControls from './components/CanvasControls';
 import ComponentDetails from './components/ComponentDetails';
 import DeviceNode from './components/DeviceNode';
@@ -60,6 +60,7 @@ const fitPadding = { top: 32, right: 32, bottom: 56, left: 32 };
 const minimumZoomRatio = 0.6;
 const zoomStep = 1.15;
 const panelTransitionMs = 240;
+const entranceDurationMs = 500;
 
 type FitDimensions = { width: number; height: number; panelWidth: number };
 
@@ -68,6 +69,7 @@ export default function App() {
   const [flow, setFlow] = useState<ReactFlowInstance<DiagramNode, TopologyEdgeType> | null>(null);
   const [fittedZoom, setFittedZoom] = useState<number | null>(null);
   const [isFitting, setIsFitting] = useState(false);
+  const [entranceDone, setEntranceDone] = useState(false);
   const defaultViewport = useRef<Viewport | null>(null);
   const lastFit = useRef<FitDimensions | null>(null);
   const fitRequest = useRef(0);
@@ -81,6 +83,9 @@ export default function App() {
   const panelOpen = selectedDevice !== null;
   const minimumZoom = fittedZoom === null ? undefined : fittedZoom * minimumZoomRatio;
   const nodesMeasured = flowNodes.every((node) => node.measured?.width && node.measured.height);
+  const fitReady = fittedZoom !== null;
+  const entering = fitReady && !entranceDone;
+  const finishEntrance = entering ? () => setEntranceDone(true) : undefined;
 
   const graph = useMemo(() => {
     if (!selectedId) return { nodes: flowNodes, edges };
@@ -166,6 +171,13 @@ export default function App() {
     return () => observer.disconnect();
   }, [fitDiagram, flow, nodesMeasured, panelOpen]);
 
+  useEffect(() => {
+    if (!entering) return;
+
+    const timeout = window.setTimeout(() => setEntranceDone(true), entranceDurationMs);
+    return () => window.clearTimeout(timeout);
+  }, [entering]);
+
   function zoomBy(factor: number) {
     const workspace = workspaceRef.current;
     if (!flow || !workspace || isFitting || fittedZoom === null || minimumZoom === undefined) return;
@@ -225,13 +237,35 @@ export default function App() {
     <div className="app-shell">
       <header className="app-header">
         <div className="brand">
-          <span className="brand-mark" aria-hidden="true">
-            <Network size={18} strokeWidth={1.5} />
-          </span>
-          <div>
-            <h1>NetOps Sentinel</h1>
-            <p>Interactive System Architecture</p>
-          </div>
+          <h1 aria-label="NetOps Sentinel">
+            <svg
+              className="brand-wordmark"
+              viewBox="0 0 193 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.7}
+              strokeLinejoin="round"
+              strokeLinecap="square"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path transform="translate(2 0)" d="M0 20V4l9 16V4" />
+              <path transform="translate(15 0)" d="M9 4H0v16h9M0 12h7.5" />
+              <path transform="translate(28 0)" d="M0 4h10M5 4v16" />
+              <path transform="translate(41 0)" d="M2.1 4.2h4.8L9 6.3v11.4l-2.1 2.1H2.1L0 17.7V6.3Z" />
+              <path transform="translate(54 0)" d="M0 20V4h6.2L9 6.4v4L6.2 13H0" />
+              <path transform="translate(67 0)" d="M9 4.3H2.2L0 6.5v3.1l2.2 2.3h4.6L9 14.1v3.6L6.8 20H0" />
+              <path transform="translate(91 0)" d="M9 4.3H2.2L0 6.5v3.1l2.2 2.3h4.6L9 14.1v3.6L6.8 20H0" />
+              <path transform="translate(104 0)" d="M9 4H0v16h9M0 12h7.5" />
+              <path transform="translate(117 0)" d="M0 20V4l9 16V4" />
+              <path transform="translate(130 0)" d="M0 4h10M5 4v16" />
+              <path transform="translate(143 0)" d="M1 4h8M5 4v16M1 20h8" />
+              <path transform="translate(156 0)" d="M0 20V4l9 16V4" />
+              <path transform="translate(169 0)" d="M9 4H0v16h9M0 12h7.5" />
+              <path transform="translate(182 0)" d="M0 4v16h9" />
+            </svg>
+          </h1>
+          <p>Interactive System Architecture</p>
         </div>
 
         <span className="preview-label">
@@ -240,7 +274,14 @@ export default function App() {
       </header>
 
       <main ref={workspaceRef} className="workspace">
-        <div ref={canvasRef} className="topology-canvas" data-fit-ready={fittedZoom !== null}>
+        <div
+          ref={canvasRef}
+          className="topology-canvas"
+          data-fit-ready={fitReady}
+          data-entering={entering}
+          onPointerDownCapture={finishEntrance}
+          onFocusCapture={finishEntrance}
+        >
           <ReactFlow
             nodes={graph.nodes}
             edges={graph.edges}
@@ -284,7 +325,7 @@ export default function App() {
 
           <div className="canvas-hint">
             <Info size={15} />
-            Click a component for details
+            Select a component to see its connections.
           </div>
         </div>
 

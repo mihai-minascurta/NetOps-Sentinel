@@ -1,8 +1,10 @@
+import type { CSSProperties } from 'react';
 import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath, type EdgeProps } from '@xyflow/react';
-import type { TopologyEdgeType } from '../topology';
+import { entranceDelayByDevice, type TopologyEdgeType } from '../topology';
 
 export default function TopologyEdge({
   id,
+  target,
   data,
   label,
   markerEnd,
@@ -21,6 +23,9 @@ export default function TopologyEdge({
     targetY,
     targetPosition,
   });
+  const vertical = Math.abs(targetY - sourceY) > Math.abs(targetX - sourceX);
+  const entranceDelay = Math.max(0, (entranceDelayByDevice.get(target) ?? 0) - 30);
+  const entranceStyle = { '--entrance-delay': `${entranceDelay}ms` } as CSSProperties;
 
   return (
     <>
@@ -28,18 +33,21 @@ export default function TopologyEdge({
         id={id}
         path={path}
         markerEnd={markerEnd}
+        pathLength={data?.readOnly ? undefined : 1}
+        style={entranceStyle}
         className={data?.readOnly ? 'topology-edge__path is-read-only' : 'topology-edge__path'}
       />
-      {data?.active && <path d={path} className="topology-edge__motion" aria-hidden="true" />}
       {label && (
         <EdgeLabelRenderer>
           <span
             className={[
               'topology-edge__label',
+              vertical && 'topology-edge__label--vertical',
               label === 'scrape' && 'topology-edge__label--scrape',
+              data?.active && 'topology-edge__label--active',
               data?.dimmed && 'topology-edge__label--dimmed',
             ].filter(Boolean).join(' ')}
-            style={{ left: labelX, top: labelY }}
+            style={{ ...entranceStyle, left: vertical ? labelX + 12 : labelX, top: vertical ? labelY : labelY - 16 }}
           >
             {label}
           </span>
