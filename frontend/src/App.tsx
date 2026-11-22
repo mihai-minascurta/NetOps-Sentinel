@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 
 import {
@@ -44,7 +43,7 @@ export default function App() {
           edges={edges}
           nodeTypes={nodeTypes}
           fitView
-          fitViewOptions={{ padding: 0.18 }}
+          fitViewOptions={{ padding: 0.08 }}
           nodesDraggable={false}
           nodesConnectable={false}
           edgesReconnectable={false}
@@ -60,9 +59,10 @@ export default function App() {
         >
           <Background
             variant={BackgroundVariant.Dots}
+            bgColor="var(--color-bg)"
             color="var(--canvas-dot)"
             gap={24}
-            size={1}
+            size={0.8}
           />
           <Controls showInteractive={false} />
         </ReactFlow>

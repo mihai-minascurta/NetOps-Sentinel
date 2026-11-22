@@ -1,4 +1,3 @@
-
 import {
   MarkerType,
   type Node,
@@ -52,41 +51,41 @@ export const nodes: DiagramNode[] = [
   {
     id: 'r2-group',
     type: 'group',
-    position: { x: 318, y: 85 },
-    style: { width: 800, height: 340 },
+    position: { x: 360, y: 104 },
+    style: { width: 960, height: 400 },
     className: 'r2-group',
-    data: { label: 'R2 · OCI PRIVATE VM / DOCKER HOST' },
+    data: { label: 'Host: R2' },
   },
 
   device('r1', 'R1', 'Public VM · Node Exporter', 'router',
-    'VM în subnetul public OCI. Expune metrici pentru Prometheus.', 50, 165),
+    'VM în subnetul public OCI. Expune metrici pentru Prometheus.', 40, 300),
 
   device('r2', 'R2', 'Private VM · Node Exporter', 'router',
-    'VM privată OCI. Rulează Node Exporter și găzduiește stack-ul Docker.', 30, 240, 'r2-group'),
+    'VM privată OCI. Rulează Node Exporter și găzduiește stack-ul Docker.', 40, 240, 'r2-group'),
 
   device('prometheus', 'Prometheus', 'Metrics collection', 'monitoring',
-    'Colectează periodic metrici de la Node Exporter pe R1 și R2.', 30, 80, 'r2-group'),
+    'Colectează periodic metrici de la Node Exporter pe R1 și R2.', 40, 40, 'r2-group'),
 
   device('alertmanager', 'Alertmanager', 'Alert routing', 'alert',
-    'Primește alertele de la Prometheus și trimite webhook-uri către Incident Manager.', 292, 80, 'r2-group'),
+    'Primește alertele de la Prometheus și trimite webhook-uri către Incident Manager.', 380, 40, 'r2-group'),
 
   device('backend', 'Incident Manager', 'FastAPI · Docker', 'backend',
-    'Primește webhook-uri, gestionează incidente și coordonează investigațiile.', 554, 80, 'r2-group'),
+    'Primește webhook-uri, gestionează incidente și coordonează investigațiile.', 720, 40, 'r2-group'),
 
   device('investigation', 'Investigation', 'Python engine', 'investigation',
-    'Execută verificările și colectează informațiile necesare diagnosticului.', 820, 525),
+    'Execută verificările și colectează informațiile necesare diagnosticului.', 720, 560),
 
   device('evidence', 'Evidences', 'Collected results', 'evidence',
-    'Rezultatele verificărilor sunt structurate și salvate pentru investigație.', 1060, 525),
+    'Rezultatele verificărilor sunt structurate și salvate pentru investigație.', 1060, 560),
 
   device('ai', 'AI Diagnosis', 'NVIDIA inference API', 'ai',
-    'Analizează dovezile și generează o explicație, nivel de încredere și recomandări.', 1300, 525),
+    'Analizează dovezile și generează o explicație, nivel de încredere și recomandări.', 1400, 560),
 
   device('mcp', 'MCP Tools', 'Read-only investigation tools', 'mcp',
-    'Expune instrumente pentru citirea incidentelor, investigațiilor și dovezilor.', 1300, 725),
+    'Expune instrumente pentru citirea incidentelor, investigațiilor și dovezilor.', 1400, 760),
 
   device('db', 'SQLite Database', 'Persistent Docker volume · R2', 'database',
-    'Stochează alertele, incidentele, investigațiile, dovezile și diagnosticele AI.', 1460, 165),
+    'Stochează alertele, incidentele, investigațiile, dovezile și diagnosticele AI.', 1400, 300),
 ];
 
 function link(
