@@ -1,16 +1,17 @@
 :root {
   color-scheme: dark;
-  --color-bg: #111210;
-  --color-surface: #191A17;
-  --color-surface-raised: #222420;
-  --color-surface-active: #272D19;
-  --color-border: #3E4239;
-  --color-text: #EFF1E8;
-  --color-text-muted: #A7AD9C;
-  --color-text-dimmed: #939A88;
-  --color-accent: #BED272;
-  --color-edge: #777F6D;
-  --canvas-dot: #2B2E27;
+  --color-bg: #16211F;
+  --color-surface: #1D2A27;
+  --color-surface-raised: #25342F;
+  --color-surface-active: #2D3F36;
+  --color-border: #3A4D47;
+  --color-text: #DCE4DA;
+  --color-text-muted: #A8B5AD;
+  --color-text-dimmed: #A0ADA5;
+  --color-accent: #EBA886;
+  --color-edge: #7E9088;
+  --color-line-subtle: #6D8077;
+  --canvas-dot: #22302C;
   --radius-small: 6px;
   --radius-control: 10px;
   --radius-panel: 12px;
@@ -133,7 +134,7 @@ body {
 .stage-heading::after,
 .stage-continuation > span {
   flex: 1;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--color-line-subtle);
 }
 
 .stage-heading::after {
@@ -154,7 +155,7 @@ body {
 /* R2 host boundary */
 .react-flow__node-group.r2-group {
   background: color-mix(in srgb, var(--color-surface) 32%, transparent);
-  border: 1px dashed var(--color-border);
+  border: 1px dashed var(--color-line-subtle);
   border-radius: var(--radius-host);
 }
 
@@ -185,7 +186,7 @@ body {
   gap: 8px;
   padding: 16px;
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-line-subtle);
   border-inline-color: transparent;
   border-radius: var(--radius-node);
   transition: border-color 160ms, transform 160ms;
@@ -205,6 +206,7 @@ body {
 }
 
 .net-node.is-selected {
+  background: var(--color-surface-active);
   border-color: var(--color-accent);
   box-shadow: 0 0 0 1px var(--color-accent);
 }
@@ -239,13 +241,33 @@ body {
   min-width: 0;
 }
 
+.net-node[data-category='infrastructure'] {
+  --category-color: #8FA6D6;
+}
+
+.net-node[data-category='monitoring'] {
+  --category-color: #7FB5A8;
+}
+
+.net-node[data-category='application'] {
+  --category-color: #B5C27A;
+}
+
+.net-node[data-category='storage'] {
+  --category-color: #D9A66C;
+}
+
+.net-node[data-category='ai'] {
+  --category-color: #C98FA8;
+}
+
 .net-node__icon {
   display: grid;
   place-items: center;
   width: 36px;
   height: 36px;
   flex-shrink: 0;
-  color: var(--color-text-muted);
+  color: var(--category-color, var(--color-text-muted));
 }
 
 .net-node__title {
@@ -275,14 +297,18 @@ body {
   height: 5px;
 }
 
-.react-flow__edge.is-outside-route {
-  opacity: 0.35;
+.react-flow__edge.is-outside-route .topology-edge__path {
+  stroke: var(--color-line-subtle);
 }
 
 .react-flow__node-device.is-outside-route {
   --color-surface: var(--color-bg);
   --color-text: var(--color-text-dimmed);
   --color-text-muted: var(--color-text-dimmed);
+}
+
+.react-flow__node-device.is-outside-route .net-node__icon {
+  color: var(--color-text-dimmed);
 }
 
 .topology-edge__path {
@@ -396,7 +422,7 @@ body {
 }
 
 .react-flow__controls-button {
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-line-subtle);
   border-radius: var(--radius-control);
 }
 
@@ -406,6 +432,7 @@ body {
 
 .react-flow__controls-button:disabled {
   background: var(--color-bg);
+  border-color: var(--color-border);
   color: color-mix(in srgb, var(--color-text-muted) 45%, var(--color-bg));
   cursor: default;
 }
@@ -421,7 +448,7 @@ body {
   min-width: 0;
   padding: 16px 20px 24px;
   overflow-y: auto;
-  border-inline-start: 1px solid var(--color-border);
+  border-inline-start: 1px solid var(--color-line-subtle);
   background: var(--color-surface-raised);
   font-size: 14px;
   line-height: 1.5;

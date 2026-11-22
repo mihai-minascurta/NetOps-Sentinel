@@ -172,6 +172,11 @@ const edgeMarker = {
   color: 'var(--color-edge)',
 };
 
+export const dimmedEdgeMarker = {
+  ...edgeMarker,
+  color: 'var(--color-line-subtle)',
+};
+
 export const activeEdgeMarker = {
   ...edgeMarker,
   width: 24,

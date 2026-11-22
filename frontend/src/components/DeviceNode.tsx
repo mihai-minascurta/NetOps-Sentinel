@@ -64,7 +64,7 @@ export default function DeviceNode({
       <Handle type="target" id="in-top" position={Position.Top} />
       <Handle type="target" id="in-bottom" position={Position.Bottom} />
 
-      <div className={className} style={style}>
+      <div className={className} data-category={category.toLowerCase()} style={style}>
         <span className="net-node__category">{category}</span>
         <div className="net-node__main">
           <div className="net-node__icon">

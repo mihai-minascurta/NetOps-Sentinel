@@ -18,6 +18,7 @@ import DeviceNode from './components/DeviceNode';
 import TopologyEdge from './components/TopologyEdge';
 import {
   activeEdgeMarker,
+  dimmedEdgeMarker,
   edges,
   getComponentRoute,
   nodes,
@@ -98,7 +99,12 @@ export default function App() {
       }),
       edges: edges.map((edge) => {
         if (!route.edgeIds.has(edge.id)) {
-          return { ...edge, className: 'is-outside-route', data: { ...edge.data, dimmed: true } };
+          return {
+            ...edge,
+            className: 'is-outside-route',
+            markerEnd: dimmedEdgeMarker,
+            data: { ...edge.data, dimmed: true },
+          };
         }
 
         return {
