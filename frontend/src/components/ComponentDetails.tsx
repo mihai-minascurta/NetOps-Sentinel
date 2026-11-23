@@ -1,6 +1,7 @@
 import type { Ref } from 'react';
 import { X } from 'lucide-react';
 import { componentMetadata, componentPorts, getComponentConnections, type DeviceNodeType } from '../topology';
+import TopologyStatusBadge from './TopologyStatusBadge';
 
 type ComponentDetailsProps = {
   device: DeviceNodeType;
@@ -9,7 +10,7 @@ type ComponentDetailsProps = {
 };
 
 export default function ComponentDetails({ device, panelRef, onClose }: ComponentDetailsProps) {
-  const { title, subtitle, description } = device.data;
+  const { title, subtitle, description, liveStatus } = device.data;
   const { role, technology } = componentMetadata[device.id];
   const port = componentPorts[device.id];
   const { inputs, outputs } = getComponentConnections(device.id);
@@ -31,6 +32,12 @@ export default function ComponentDetails({ device, panelRef, onClose }: Componen
           <dt>Role in the system</dt>
           <dd>{role}</dd>
         </div>
+        {liveStatus && (
+          <div>
+            <dt>Status</dt>
+            <dd><TopologyStatusBadge status={liveStatus} /></dd>
+          </div>
+        )}
         {technology !== title && technology !== subtitle && (
           <div>
             <dt>Technology</dt>

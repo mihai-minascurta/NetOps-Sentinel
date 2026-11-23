@@ -15,17 +15,21 @@ import { Info } from 'lucide-react';
 import CanvasControls from './components/CanvasControls';
 import ComponentDetails from './components/ComponentDetails';
 import DeviceNode from './components/DeviceNode';
+import TopologyDemoControls from './components/TopologyDemoControls';
 import TopologyEdge from './components/TopologyEdge';
 import {
-  activeEdgeMarker,
-  dimmedEdgeMarker,
   edges,
-  getComponentRoute,
+  getRouteMarker,
+  getSelectedEdgeIds,
+  isRouterId,
   nodes,
   type DiagramNode,
   type StageNode,
   type TopologyEdgeType,
+  type TopologyStatus,
 } from './topology';
+import { useTopologyPulses } from './useTopologyPulses';
+import { useTopologyStatus } from './useTopologyStatus';
 
 import '@xyflow/react/style.css';
 import './App.css';
@@ -45,12 +49,22 @@ const fitPadding = { top: 32, right: 32, bottom: 56, left: 32 };
 const minimumZoomRatio = 0.6;
 const zoomStep = 1.15;
 const panelTransitionMs = 240;
-const entranceDurationMs = 500;
+const entranceDurationMs = 550;
+const devTopology = import.meta.env.DEV;
+const demoMode = devTopology && new URLSearchParams(window.location.search).get('demo') === '1';
 
 type FitDimensions = { width: number; height: number; panelWidth: number };
 
 export default function App() {
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState(nodes);
+  const [demoStatus, setDemoStatus] = useState<TopologyStatus | null>(() => demoMode ? {
+    generated_at: new Date().toISOString(),
+    nodes: { r1: 'up', r2: 'up' },
+    alerts_available: true,
+    active_alerts: [],
+  } : null);
+  const live = useTopologyStatus(devTopology && !demoMode);
+  const snapshot = demoStatus ?? live.snapshot;
   const [flow, setFlow] = useState<ReactFlowInstance<DiagramNode, TopologyEdgeType> | null>(null);
   const [fittedZoom, setFittedZoom] = useState<number | null>(null);
   const [isFitting, setIsFitting] = useState(false);
@@ -62,7 +76,17 @@ export default function App() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const focusOnClose = useRef<string | null>(null);
-  const selected = flowNodes.find((node) => node.selected);
+  const r1Status = snapshot?.nodes.r1 ?? 'unknown';
+  const r2Status = snapshot?.nodes.r2 ?? 'unknown';
+  const displayedNodes = useMemo(() => {
+    if (!devTopology) return flowNodes;
+
+    const statuses = { r1: r1Status, r2: r2Status };
+    return flowNodes.map((node) => node.type === 'device' && isRouterId(node.id)
+      ? { ...node, data: { ...node.data, liveStatus: statuses[node.id] } }
+      : node);
+  }, [flowNodes, r1Status, r2Status]);
+  const selected = displayedNodes.find((node) => node.selected);
   const selectedDevice = selected?.type === 'device' ? selected : null;
   const selectedId = selectedDevice?.id;
   const panelOpen = selectedDevice !== null;
@@ -71,29 +95,32 @@ export default function App() {
   const fitReady = fittedZoom !== null;
   const entering = fitReady && !entranceDone;
   const finishEntrance = entering ? () => setEntranceDone(true) : undefined;
+  const edgeActivities = useTopologyPulses(snapshot, fitReady);
 
-  const graph = useMemo(() => {
-    if (!selectedId) return { nodes: flowNodes, edges };
+  let previewLabel = 'Topology preview · Not live';
+  if (demoStatus) previewLabel = 'Demo';
+  else if (live.unreachable) previewLabel = 'Not live · Backend unreachable';
+  else if (snapshot) previewLabel = snapshot.alerts_available ? 'Live' : 'Alerts unavailable';
 
-    const route = getComponentRoute(selectedId);
-    return {
-      nodes: flowNodes.map((node) => {
-        if (node.type !== 'device') return node;
-        return {
-          ...node,
-          className: route.nodeIds.has(node.id) ? 'is-on-route' : 'is-outside-route',
-        };
-      }),
-      edges: edges.map<TopologyEdgeType>((edge) => {
-        const routeState = route.edgeIds.has(edge.id) ? 'active' : 'dimmed';
-        return {
-          ...edge,
-          markerEnd: routeState === 'active' ? activeEdgeMarker : dimmedEdgeMarker,
-          data: { ...edge.data, routeState },
-        };
-      }),
-    };
-  }, [flowNodes, selectedId]);
+  const displayedEdges = useMemo(() => {
+    if (!selectedId && edgeActivities.size === 0) return edges;
+
+    const edgeIds = selectedId ? getSelectedEdgeIds(selectedId) : undefined;
+    return edges.map<TopologyEdgeType>((edge) => {
+      const routeState = edgeIds ? (edgeIds.has(edge.id) ? 'active' : 'dimmed') : undefined;
+      const bidirectional = edge.data.kind === 'data';
+      const activity = routeState === 'dimmed' || bidirectional ? undefined : edgeActivities.get(edge.id);
+      if (!routeState && !activity) return edge;
+
+      const marker = routeState ? getRouteMarker(edge.data.kind, routeState) : edge.markerEnd;
+      return {
+        ...edge,
+        markerStart: bidirectional ? marker : undefined,
+        markerEnd: marker,
+        data: { ...edge.data, routeState, activity },
+      };
+    });
+  }, [edgeActivities, selectedId]);
 
   const fitDiagram = useCallback((force = false) => {
     const workspace = workspaceRef.current;
@@ -253,7 +280,10 @@ export default function App() {
         </div>
 
         <span className="preview-label">
-          Topology preview · Not live
+          <span role="status">{previewLabel}</span>
+          {snapshot && !demoStatus && (
+            <> · <time dateTime={snapshot.generated_at}>{new Date(snapshot.generated_at).toLocaleTimeString()}</time></>
+          )}
         </span>
       </header>
 
@@ -268,8 +298,8 @@ export default function App() {
         >
           <ReactFlow
             forceColorMode="light"
-            nodes={graph.nodes}
-            edges={graph.edges}
+            nodes={displayedNodes}
+            edges={displayedEdges}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             panOnDrag={false}
@@ -306,6 +336,13 @@ export default function App() {
               onFit={() => fitDiagram(true)}
             />
           </ReactFlow>
+
+          {devTopology && demoStatus && (
+            <TopologyDemoControls
+              snapshot={demoStatus}
+              onChange={(update) => setDemoStatus((current) => current && update(current))}
+            />
+          )}
 
           <div className="canvas-hint">
             <Info size={15} />
