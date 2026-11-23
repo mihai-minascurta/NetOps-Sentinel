@@ -17,17 +17,23 @@ import ComponentDetails from './components/ComponentDetails';
 import DeviceNode from './components/DeviceNode';
 import TopologyDemoControls from './components/TopologyDemoControls';
 import TopologyEdge from './components/TopologyEdge';
+import TopologySimulationControls from './components/TopologySimulationControls';
 import {
   edges,
   getRouteMarker,
   getSelectedEdgeIds,
+  getSimulationMarker,
   isRouterId,
   nodes,
+  simulationQueryEdge,
+  simulationQueryRoute,
   type DiagramNode,
   type StageNode,
   type TopologyEdgeType,
   type TopologyStatus,
 } from './topology';
+import { getSimulationSnapshot, simulationFaults, transitionSimulation, type SimulationAction, type SimulationState } from './topologySimulation';
+import { getSimulationTimeline, type SimulationSpeed } from './topologySimulationTimeline';
 import { useTopologyPulses } from './useTopologyPulses';
 import { useTopologyStatus } from './useTopologyStatus';
 
@@ -52,8 +58,10 @@ const panelTransitionMs = 240;
 const entranceDurationMs = 550;
 const devTopology = import.meta.env.DEV;
 const demoMode = devTopology && new URLSearchParams(window.location.search).get('demo') === '1';
+const simulationPanelId = 'topology-simulation';
+const simulationEdges = devTopology ? [...edges, simulationQueryEdge] : edges;
 
-type FitDimensions = { width: number; height: number; panelWidth: number };
+type FitDimensions = { width: number; height: number; panelWidth: number; simulationActive: boolean };
 
 export default function App() {
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState(nodes);
@@ -64,7 +72,17 @@ export default function App() {
     active_alerts: [],
   } : null);
   const live = useTopologyStatus(devTopology && !demoMode);
-  const snapshot = demoStatus ?? live.snapshot;
+  const [simulation, setSimulation] = useState<SimulationState>({ phase: 'idle' });
+  const [simulationOpen, setSimulationOpen] = useState(false);
+  const [simulationSpeed, setSimulationSpeed] = useState<SimulationSpeed>('normal');
+  const [pulseSession, setPulseSession] = useState(0);
+  const simulationSnapshot = useMemo(() => devTopology ? getSimulationSnapshot(simulation) : null, [simulation]);
+  const simulationActive = simulationSnapshot !== null;
+  const snapshot = simulationSnapshot ?? demoStatus ?? live.snapshot;
+  const simulatedScenario = devTopology && simulation.phase === 'running' ? simulation.scenario : null;
+  const simulationTimeline = useMemo(() => simulatedScenario
+    ? getSimulationTimeline(simulatedScenario.router, simulatedScenario.fault, simulationSpeed)
+    : null, [simulatedScenario, simulationSpeed]);
   const [flow, setFlow] = useState<ReactFlowInstance<DiagramNode, TopologyEdgeType> | null>(null);
   const [fittedZoom, setFittedZoom] = useState<number | null>(null);
   const [isFitting, setIsFitting] = useState(false);
@@ -76,51 +94,85 @@ export default function App() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const focusOnClose = useRef<string | null>(null);
+  const simulationToggleRef = useRef<HTMLButtonElement>(null);
   const r1Status = snapshot?.nodes.r1 ?? 'unknown';
   const r2Status = snapshot?.nodes.r2 ?? 'unknown';
+  const fitReady = fittedZoom !== null;
+  const { edgeActivities, simulationFrame } = useTopologyPulses(
+    snapshot, fitReady, pulseSession, simulationTimeline,
+  );
+
   const displayedNodes = useMemo(() => {
     if (!devTopology) return flowNodes;
 
     const statuses = { r1: r1Status, r2: r2Status };
-    return flowNodes.map((node) => node.type === 'device' && isRouterId(node.id)
-      ? { ...node, data: { ...node.data, liveStatus: statuses[node.id] } }
-      : node);
-  }, [flowNodes, r1Status, r2Status]);
+    return flowNodes.map<DiagramNode>((node) => {
+      if (node.type !== 'device') return node;
+
+      const simulationCurrent = simulationFrame?.current?.currentNodeIds.includes(node.id);
+      if (isRouterId(node.id)) {
+        const status = statuses[node.id];
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            liveStatus: status,
+            simulatedFault: simulatedScenario?.router === node.id ? simulationFaults[simulatedScenario.fault] : undefined,
+            simulationStatus: simulationActive && status !== 'unknown' ? status : undefined,
+            simulationCurrent,
+          },
+        };
+      }
+
+      const visited = simulationFrame?.visitedNodes.has(node.id);
+      if (!visited && !simulationCurrent) return node;
+      return {
+        ...node,
+        data: { ...node.data, simulationStatus: visited ? 'visited' : undefined, simulationCurrent },
+      };
+    });
+  }, [flowNodes, r1Status, r2Status, simulatedScenario, simulationActive, simulationFrame]);
   const selected = displayedNodes.find((node) => node.selected);
   const selectedDevice = selected?.type === 'device' ? selected : null;
   const selectedId = selectedDevice?.id;
   const panelOpen = selectedDevice !== null;
   const minimumZoom = fittedZoom === null ? undefined : fittedZoom * minimumZoomRatio;
   const nodesMeasured = flowNodes.every((node) => node.measured?.width && node.measured.height);
-  const fitReady = fittedZoom !== null;
   const entering = fitReady && !entranceDone;
   const finishEntrance = entering ? () => setEntranceDone(true) : undefined;
-  const edgeActivities = useTopologyPulses(snapshot, fitReady);
 
   let previewLabel = 'Topology preview · Not live';
-  if (demoStatus) previewLabel = 'Demo';
+  if (devTopology && simulationActive) previewLabel = 'Simulation';
+  else if (demoStatus) previewLabel = 'Demo';
   else if (live.unreachable) previewLabel = 'Not live · Backend unreachable';
   else if (snapshot) previewLabel = snapshot.alerts_available ? 'Live' : 'Alerts unavailable';
 
   const displayedEdges = useMemo(() => {
-    if (!selectedId && edgeActivities.size === 0) return edges;
+    const visibleEdges = simulationActive ? simulationEdges : edges;
+    if (!selectedId && edgeActivities.size === 0 && !simulationFrame) return visibleEdges;
 
     const edgeIds = selectedId ? getSelectedEdgeIds(selectedId) : undefined;
-    return edges.map<TopologyEdgeType>((edge) => {
-      const routeState = edgeIds ? (edgeIds.has(edge.id) ? 'active' : 'dimmed') : undefined;
+    return visibleEdges.map<TopologyEdgeType>((edge) => {
+      const routeState = edgeIds && edge.data.kind !== 'query' ? (edgeIds.has(edge.id) ? 'active' : 'dimmed') : undefined;
+      const simulationState = simulationFrame?.current?.moves.some(({ edgeId }) => edgeId === edge.id)
+        ? 'current'
+        : simulationFrame?.visitedEdges.has(edge.id) ? 'visited' : undefined;
       const bidirectional = edge.data.kind === 'data';
-      const activity = routeState === 'dimmed' || bidirectional ? undefined : edgeActivities.get(edge.id);
-      if (!routeState && !activity) return edge;
+      const activity = simulationFrame || (routeState !== 'dimmed' && !bidirectional)
+        ? edgeActivities.get(edge.id)
+        : undefined;
+      if (!routeState && !activity && !simulationState) return edge;
 
-      const marker = routeState ? getRouteMarker(edge.data.kind, routeState) : edge.markerEnd;
+      const marker = simulationState ? getSimulationMarker(edge.data.kind) :
+        routeState ? getRouteMarker(edge.data.kind, routeState) : edge.markerEnd;
       return {
         ...edge,
         markerStart: bidirectional ? marker : undefined,
         markerEnd: marker,
-        data: { ...edge.data, routeState, activity },
+        data: { ...edge.data, routeState, activity, simulationState },
       };
     });
-  }, [edgeActivities, selectedId]);
+  }, [edgeActivities, selectedId, simulationActive, simulationFrame]);
 
   const fitDiagram = useCallback((force = false) => {
     const workspace = workspaceRef.current;
@@ -136,10 +188,14 @@ export default function App() {
     ) return;
 
     const previous = lastFit.current;
-    const sameWorkspaceSize = previous?.width === width && previous.height === height;
+    const sameWorkspaceSize = previous?.width === width && previous.height === height &&
+      previous.simulationActive === simulationActive;
     if (!force && sameWorkspaceSize && previous.panelWidth === panelWidth) return;
 
-    const bounds = flow.getNodesBounds(diagramNodeIds);
+    const nodeBounds = flow.getNodesBounds(diagramNodeIds);
+    const bounds = simulationActive
+      ? { ...nodeBounds, height: Math.max(nodeBounds.height, simulationQueryRoute.fitBottomY - nodeBounds.y) }
+      : nodeBounds;
     const closedViewport = sameWorkspaceSize && defaultViewport.current
       ? defaultViewport.current
       : getViewportForBounds(bounds, width, height, 0, Infinity, fitPadding);
@@ -159,7 +215,7 @@ export default function App() {
     const request = ++fitRequest.current;
 
     defaultViewport.current = closedViewport;
-    lastFit.current = { width, height, panelWidth };
+    lastFit.current = { width, height, panelWidth, simulationActive };
     setFittedZoom(fitted.zoom);
     setIsFitting(duration > 0);
 
@@ -169,7 +225,7 @@ export default function App() {
         if (fitRequest.current === request) setIsFitting(false);
       });
     }
-  }, [flow, nodesMeasured]);
+  }, [flow, nodesMeasured, simulationActive]);
 
   useLayoutEffect(() => {
     const workspace = workspaceRef.current;
@@ -209,6 +265,31 @@ export default function App() {
     }, { duration: 0 });
   }
 
+  function handleSimulationAction(action: SimulationAction) {
+    const next = transitionSimulation(simulation, action);
+    setSimulation(next);
+    if (next.phase !== simulation.phase) setPulseSession((session) => session + 1);
+    if (action.type === 'reset') {
+      setSimulationSpeed('normal');
+      closeSimulation();
+    }
+  }
+
+  function closeSimulation() {
+    setSimulationOpen(false);
+    simulationToggleRef.current?.focus({ preventScroll: true });
+  }
+
+  function toggleSimulation() {
+    if (simulationOpen) {
+      closeSimulation();
+      return;
+    }
+
+    handleSimulationAction({ type: 'arm', at: new Date().toISOString() });
+    setSimulationOpen(true);
+  }
+
   const closeDetails = useCallback(() => {
     if (!selectedId) return;
 
@@ -221,6 +302,7 @@ export default function App() {
 
     function handleEscape(event: KeyboardEvent) {
       if (event.key !== 'Escape') return;
+      if (devTopology && event.target instanceof Element && event.target.closest('[data-topology-simulation]')) return;
 
       event.preventDefault();
       event.stopPropagation();
@@ -279,13 +361,46 @@ export default function App() {
           <p>Interactive System Architecture</p>
         </div>
 
-        <span className="preview-label">
-          <span role="status">{previewLabel}</span>
-          {snapshot && !demoStatus && (
-            <> · <time dateTime={snapshot.generated_at}>{new Date(snapshot.generated_at).toLocaleTimeString()}</time></>
+        <div className="header-actions">
+          <span className="preview-label">
+            <span role="status">{previewLabel}</span>
+            {snapshot && !demoStatus && !simulationSnapshot && (
+              <> · <time dateTime={snapshot.generated_at}>{new Date(snapshot.generated_at).toLocaleTimeString()}</time></>
+            )}
+          </span>
+          {devTopology && (
+            <button
+              ref={simulationToggleRef}
+              className="topology-simulation__toggle"
+              type="button"
+              aria-expanded={simulationOpen}
+              aria-controls={simulationOpen ? simulationPanelId : undefined}
+              data-topology-simulation={simulationOpen ? '' : undefined}
+              onClick={toggleSimulation}
+              onKeyDown={(event) => {
+                if (event.key !== 'Escape' || !simulationOpen) return;
+
+                event.preventDefault();
+                closeSimulation();
+              }}
+            >
+              Simulate
+            </button>
           )}
-        </span>
+        </div>
       </header>
+
+      {devTopology && simulationOpen && (
+        <TopologySimulationControls
+          id={simulationPanelId}
+          state={simulation}
+          speed={simulationSpeed}
+          onSpeedChange={setSimulationSpeed}
+          stepLabel={simulationFrame ? simulationFrame.current?.label ?? 'Complete' : undefined}
+          onAction={handleSimulationAction}
+          onClose={closeSimulation}
+        />
+      )}
 
       <main ref={workspaceRef} className="workspace">
         <div
@@ -293,6 +408,7 @@ export default function App() {
           className="topology-canvas"
           data-fit-ready={fitReady}
           data-entering={entering}
+          data-simulation-active={devTopology && simulationActive ? 'true' : undefined}
           onPointerDownCapture={finishEntrance}
           onFocusCapture={finishEntrance}
         >
@@ -337,7 +453,7 @@ export default function App() {
             />
           </ReactFlow>
 
-          {devTopology && demoStatus && (
+          {devTopology && demoStatus && !simulationSnapshot && (
             <TopologyDemoControls
               snapshot={demoStatus}
               onChange={(update) => setDemoStatus((current) => current && update(current))}

@@ -45,11 +45,11 @@ export type TopologyStatus = {
 };
 
 export type EdgeActivity = {
-  pulses?: { id: string; startsAt: number }[];
+  pulses?: { id: string; startsAt: number; durationMs: number; reverse?: boolean }[];
   highlight?: boolean;
 };
 
-type EdgeKind = 'flow' | 'data';
+type EdgeKind = 'flow' | 'data' | 'query';
 type RouteState = 'active' | 'dimmed';
 type EdgeLabelSide = 'left' | 'right';
 
@@ -59,6 +59,9 @@ export type DeviceData = {
   description: string;
   kind: DeviceKind;
   liveStatus?: NodeStatus;
+  simulatedFault?: { label: string; badge: string };
+  simulationStatus?: 'up' | 'down' | 'visited';
+  simulationCurrent?: boolean;
 };
 
 export type DeviceNodeType = Node<DeviceData, 'device'>;
@@ -73,6 +76,7 @@ type TopologyEdgeData = {
   labelSide?: EdgeLabelSide;
   labelLines?: readonly string[];
   routeState?: RouteState;
+  simulationState?: 'visited' | 'current';
   activity?: EdgeActivity;
 };
 export type TopologyEdgeType = Edge<TopologyEdgeData, 'topology'> & { data: TopologyEdgeData };
@@ -244,6 +248,11 @@ export function getRouteMarker(kind: EdgeKind, state: RouteState) {
   return { ...marker, color: state === 'active' ? 'var(--color-accent)' : 'var(--color-line-subtle)' };
 }
 
+export function getSimulationMarker(kind: EdgeKind) {
+  const marker = kind === 'data' ? dataEdgeMarker : edgeMarker;
+  return { ...marker, color: 'var(--color-status-unknown)' };
+}
+
 type LinkOptions = Pick<TopologyEdgeData, 'readOnly' | 'labelAnchor' | 'labelLines'> & {
   sourceHandle?: string;
   targetHandle?: string;
@@ -321,8 +330,11 @@ const dataLinks = dataConnections.map((connection) => ({
   } satisfies DiagramHandle,
 }));
 
-export function getAdditionalDeviceHandles(id: string): DiagramHandle[] {
+const queryTargetHandle: DiagramHandle = { id: 'in-bottom-query', type: 'target', position: Position.Bottom, offset: 136 };
+
+export function getAdditionalDeviceHandles(id: string, includeSimulation = false): DiagramHandle[] {
   if (id === 'db') return dataLinks.map(({ hubHandle }) => hubHandle);
+  if (id === 'prometheus' && includeSimulation) return [queryTargetHandle];
 
   const connection = dataLinks.find(({ deviceId }) => deviceId === id);
   const handles: DiagramHandle[] = connection ? [connection.sourceHandle] : [];
@@ -380,20 +392,44 @@ export const dataEdges: TopologyEdgeType[] = dataLinks.map((connection) => ({
 
 export const edges = [...flowEdges, ...dataEdges];
 
-export const pulseSegmentMs = 1250;
+export const simulationQueryRoute = { bottomY: 744, leftX: 8, returnY: 320, fitBottomY: 748 };
+export const simulationQueryEdge: TopologyEdgeType = {
+  id: 'investigation-prom-queries',
+  source: 'investigation',
+  target: 'prometheus',
+  sourceHandle: 'out-bottom',
+  targetHandle: queryTargetHandle.id,
+  type: 'topology',
+  label: 'queries',
+  markerEnd: edgeMarker,
+  selectable: false,
+  focusable: false,
+  data: { kind: 'query', labelAnchor: { x: 300, y: 304 } },
+};
+
 const alertDeliverySteps = [
   ['prom-alert'],
   ['alert-backend', 'alert-email'],
   ['backend-alerts'],
   ['alerts-incident'],
 ] as const;
-export const pulseCycleMs = (1 + alertDeliverySteps.length) * pulseSegmentMs;
+const pulseSegmentMs = 1250;
+const pulseStepCount = 1 + alertDeliverySteps.length;
+const basePulseTiming = {
+  segmentMs: pulseSegmentMs,
+  cycleMs: pulseStepCount * pulseSegmentMs,
+  pauseMs: 3000,
+};
+export function getPulseTiming() {
+  return basePulseTiming;
+}
 
 export function getPulseTimeline(router: RouterId, cycleStart: number) {
   const steps = [[`${router}-prom`], ...alertDeliverySteps];
   return steps.map((edgeIds, index) => ({
     edgeIds,
     startsAt: cycleStart + index * pulseSegmentMs,
+    durationMs: pulseSegmentMs,
   }));
 }
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { flowEdges, getPulseTimeline, pulseCycleMs, pulseSegmentMs, routerIds } from '../src/topology.ts';
+import { flowEdges, getPulseTimeline, getPulseTiming, routerIds } from '../src/topology.ts';
 
 const edgesById = new Map(flowEdges.map((edge) => [edge.id, edge]));
 
@@ -12,19 +12,17 @@ test('Alertmanager keeps independent webhook and email receivers', () => {
 });
 
 for (const router of routerIds) {
-  test(`${router.toUpperCase()} pulse follows the pipeline and forks at Alertmanager`, () => {
+  test(`${router.toUpperCase()} baseline pulse follows the pipeline and forks at Alertmanager`, () => {
     const cycleStart = 200;
+    const timing = getPulseTiming();
     const timeline = getPulseTimeline(router, cycleStart);
-
-    assert.deepEqual(timeline, [
-      { edgeIds: [`${router}-prom`], startsAt: 200 },
-      { edgeIds: ['prom-alert'], startsAt: 1450 },
-      { edgeIds: ['alert-backend', 'alert-email'], startsAt: 2700 },
-      { edgeIds: ['backend-alerts'], startsAt: 3950 },
-      { edgeIds: ['alerts-incident'], startsAt: 5200 },
+    assert.deepEqual(timing, { segmentMs: 1250, cycleMs: 6250, pauseMs: 3000 });
+    assert.deepEqual(timeline.map(({ edgeIds }) => edgeIds), [
+      [`${router}-prom`], ['prom-alert'], ['alert-backend', 'alert-email'], ['backend-alerts'], ['alerts-incident'],
     ]);
-    assert.equal(timeline.at(-1).startsAt + pulseSegmentMs, cycleStart + pulseCycleMs);
-    assert.equal(pulseCycleMs, 6250);
+    assert.deepEqual(timeline.map(({ startsAt }) => startsAt), [200, 1450, 2700, 3950, 5200]);
+    assert.ok(timeline.every(({ durationMs }) => durationMs === timing.segmentMs));
+    assert.equal(timeline.at(-1).startsAt + timeline.at(-1).durationMs, cycleStart + timing.cycleMs);
 
     let previousTargets = new Set([router]);
     for (const { edgeIds } of timeline) {

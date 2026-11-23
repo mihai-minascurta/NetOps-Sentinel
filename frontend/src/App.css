@@ -92,6 +92,83 @@ body {
   white-space: nowrap;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  min-width: 0;
+}
+
+.topology-simulation {
+  flex: none;
+  padding: 8px 24px;
+}
+
+.topology-simulation__controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 40px;
+  margin-inline-start: auto;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font-size: 12px;
+}
+
+.topology-simulation__group,
+.topology-simulation__group label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+.topology-simulation input {
+  margin: 0;
+  accent-color: var(--color-text);
+}
+
+.topology-simulation__toggle,
+.topology-simulation button,
+.topology-simulation select {
+  min-height: 30px;
+  padding: 2px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.topology-simulation__toggle {
+  font-size: 12px;
+}
+
+.topology-simulation__toggle[aria-expanded='true'],
+.topology-simulation button:disabled,
+.topology-simulation select:disabled {
+  background: var(--color-bg);
+}
+
+.topology-simulation button:disabled,
+.topology-simulation select:disabled,
+.topology-simulation__summary {
+  color: var(--color-text-muted);
+}
+
+.topology-simulation__toggle:focus-visible,
+.topology-simulation :focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 .workspace {
   position: relative;
   display: flex;
@@ -143,6 +220,7 @@ body {
 
 /* Service nodes */
 .net-node {
+  --node-background: var(--color-surface);
   --node-shadow-color: var(--color-border);
   width: 100%;
   height: 100%;
@@ -151,7 +229,7 @@ body {
   justify-content: center;
   gap: 4px;
   padding: 8px 10px;
-  background: var(--color-surface);
+  background: var(--node-background);
   border: 1.5px solid var(--node-shadow-color);
   border-radius: var(--radius-node);
   box-shadow: 3px 3px 0 var(--node-shadow-color);
@@ -179,9 +257,47 @@ body {
   border-color: var(--color-accent);
 }
 
+.topology-canvas[data-simulation-active='true'] .net-node.is-selected {
+  background: var(--node-background);
+}
+
+.topology-canvas[data-simulation-active='true'] {
+  --simulation-visited-surface: color-mix(in srgb, var(--color-status-unknown) 27%, var(--color-surface));
+}
+
+.net-node[data-simulation-status='up'] {
+  --node-background: color-mix(in srgb, var(--color-status-up) 24%, var(--color-surface));
+}
+
+.net-node[data-simulation-status='down'] {
+  --node-background: color-mix(in srgb, var(--color-status-down) 24%, var(--color-surface));
+}
+
+.net-node[data-simulation-status='visited'] {
+  --node-background: var(--simulation-visited-surface);
+}
+
+.net-node[data-simulation-current='true'] {
+  position: relative;
+}
+
+.net-node[data-simulation-current='true']::after {
+  content: '';
+  position: absolute;
+  inset-block-start: 6px;
+  inset-inline-end: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-pill);
+  background: var(--color-status-unknown);
+  box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 3px var(--color-status-unknown);
+  pointer-events: none;
+}
+
 [data-live-status='up'] { --status-color: var(--color-status-up); }
 [data-live-status='down'] { --status-color: var(--color-status-down); }
 [data-live-status='unknown'] { --status-color: var(--color-status-unknown); }
+.topology-status-badge[data-live-status='received'] { --status-color: var(--color-status-unknown); }
 
 .net-node[data-live-status] {
   position: relative;
@@ -208,6 +324,12 @@ body {
   margin-inline-start: auto;
 }
 
+.net-node__meta > .topology-status-badge--fault {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: normal;
+}
+
 .topology-status-badge {
   display: inline-flex;
   align-items: center;
@@ -226,6 +348,7 @@ body {
   height: 6px;
   border-radius: 50%;
   background: currentColor;
+  flex: none;
 }
 
 .react-flow__node-device:focus-visible .net-node {
@@ -337,6 +460,17 @@ body {
   stroke-width: 1.25;
 }
 
+.topology-edge__path.is-visited,
+.topology-edge__path.is-current,
+.topology-edge__label.is-visited,
+.topology-edge__label.is-current {
+  --edge-route-color: var(--color-status-unknown);
+}
+
+.topology-edge__path.is-current {
+  stroke-width: 2;
+}
+
 .topology-pulse,
 .topology-pulse-static {
   pointer-events: none;
@@ -347,6 +481,11 @@ body {
   stroke: var(--color-accent);
   stroke-width: 2;
   filter: drop-shadow(0 0 4px var(--color-accent));
+}
+
+.topology-canvas[data-simulation-active='true'] .topology-pulse circle {
+  stroke: var(--color-status-unknown);
+  filter: none;
 }
 
 .topology-pulse-static {
@@ -383,6 +522,11 @@ body {
 
 .topology-edge__label > span {
   display: block;
+}
+
+.topology-edge__label.is-visited,
+.topology-edge__label.is-current {
+  background: var(--simulation-visited-surface);
 }
 
 .topology-edge__label--left {
@@ -677,6 +821,8 @@ body {
 
 @media (max-width: 650px) {
   .app-header { padding: 0 16px; }
+  .header-actions .preview-label { white-space: normal; }
+  .topology-simulation { padding-inline: 16px; }
   .details-panel {
     position: absolute;
     inset: 0 0 0 auto;

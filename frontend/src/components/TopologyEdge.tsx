@@ -1,24 +1,38 @@
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath, type EdgeProps } from '@xyflow/react';
-import { entranceDelayByDevice, pulseSegmentMs, type TopologyEdgeType } from '../topology';
+import { entranceDelayByDevice, simulationQueryRoute, type TopologyEdgeType } from '../topology';
 
-function MovingPulse({ path, startsAt }: { path: string; startsAt: number }) {
+function MovingPulse({ path, startsAt, durationMs, reverse }: {
+  path: string; startsAt: number; durationMs: number; reverse?: boolean;
+}) {
   const motion = useRef<SVGAnimateMotionElement>(null);
   const visibility = useRef<SVGSetElement>(null);
+  const scheduledStart = useRef<number | null>(null);
 
   useEffect(() => {
-    const delay = (startsAt - performance.now()) / 1000;
-    if (delay <= -pulseSegmentMs / 1000) return;
+    if (scheduledStart.current === startsAt) return;
 
+    const delay = (startsAt - performance.now()) / 1000;
+    if (delay <= -durationMs / 1000) return;
+
+    scheduledStart.current = startsAt;
     motion.current?.beginElementAt(delay);
     visibility.current?.beginElementAt(delay);
-  }, [startsAt]);
+  }, [startsAt, durationMs]);
 
-  const duration = `${pulseSegmentMs}ms`;
+  const duration = `${durationMs}ms`;
   return (
     <g className="topology-pulse" visibility="hidden" aria-hidden="true">
       <set ref={visibility} attributeName="visibility" to="visible" begin="indefinite" dur={duration} />
-      <animateMotion ref={motion} path={path} begin="indefinite" dur={duration} />
+      <animateMotion
+        ref={motion}
+        path={path}
+        begin="indefinite"
+        dur={duration}
+        calcMode={reverse ? 'linear' : undefined}
+        keyPoints={reverse ? '1;0' : undefined}
+        keyTimes={reverse ? '0;1' : undefined}
+      />
       <circle r="5" />
     </g>
   );
@@ -39,7 +53,7 @@ export default function TopologyEdge({
   targetY,
   targetPosition,
 }: EdgeProps<TopologyEdgeType>) {
-  const [path, labelX, labelY] = getSmoothStepPath({
+  const [stepPath, labelX, labelY] = getSmoothStepPath({
     sourceX,
     sourceY,
     sourcePosition,
@@ -48,14 +62,21 @@ export default function TopologyEdge({
     targetPosition,
     offset: 12,
   });
+  const { bottomY, leftX, returnY } = simulationQueryRoute;
+  const path = data.kind === 'query'
+    ? `M ${sourceX} ${sourceY} V ${bottomY} H ${leftX} V ${returnY} H ${targetX} V ${targetY}`
+    : stepPath;
   const routeClassName = data.routeState && `is-${data.routeState}`;
-  const dataEdge = data.kind === 'data';
-  const dashed = dataEdge || data.readOnly;
+  const simulationClassName = data.simulationState && `is-${data.simulationState}`;
+  const dotted = data.kind !== 'flow';
+  const dashed = dotted || data.readOnly;
   const labelPosition = data.labelAnchor ?? (
-    dataEdge ? { x: labelX + (data.labelSide === 'left' ? -10 : 10), y: labelY } : { x: labelX, y: labelY - 16 }
+    data.kind === 'data'
+      ? { x: labelX + (data.labelSide === 'left' ? -10 : 10), y: labelY }
+      : { x: labelX, y: labelY - 16 }
   );
   const targetEntrance = entranceDelayByDevice.get(target) ?? 0;
-  const sourceEntrance = dataEdge ? (entranceDelayByDevice.get(source) ?? 0) : 0;
+  const sourceEntrance = dotted ? (entranceDelayByDevice.get(source) ?? 0) : 0;
   const entranceDelay = Math.max(0, Math.max(targetEntrance, sourceEntrance) - 30);
   const entranceStyle = { '--entrance-delay': `${entranceDelay}ms` } as CSSProperties;
 
@@ -69,10 +90,18 @@ export default function TopologyEdge({
         markerEnd={markerEnd}
         pathLength={dashed ? undefined : 1}
         style={entranceStyle}
-        className={['topology-edge__path', routeClassName, dashed && 'is-dashed', dataEdge && 'is-data'].filter(Boolean).join(' ')}
+        className={[
+          'topology-edge__path', routeClassName, simulationClassName, dashed && 'is-dashed', dotted && 'is-data',
+        ].filter(Boolean).join(' ')}
       />
       {data.activity?.pulses?.map((pulse) => (
-        <MovingPulse key={pulse.id} path={path} startsAt={pulse.startsAt} />
+        <MovingPulse
+          key={pulse.id}
+          path={path}
+          startsAt={pulse.startsAt}
+          durationMs={pulse.durationMs}
+          reverse={pulse.reverse}
+        />
       ))}
       {label && (
         <EdgeLabelRenderer>
@@ -80,9 +109,10 @@ export default function TopologyEdge({
             data-edge-id={id}
             className={[
               'topology-edge__label',
-              dataEdge && `topology-edge__label--${data.labelSide}`,
+              data.labelSide && `topology-edge__label--${data.labelSide}`,
               label === 'scrape' && 'topology-edge__label--scrape',
               routeClassName,
+              simulationClassName,
             ].filter(Boolean).join(' ')}
             style={{ ...entranceStyle, left: labelPosition.x, top: labelPosition.y }}
           >

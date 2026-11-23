@@ -79,24 +79,31 @@ export default function DeviceNode({
       <Handle type="target" id="in-top" position={Position.Top} />
       <Handle type="target" id="in-bottom" position={Position.Bottom} />
 
-      <div className={className} style={style} data-live-status={data.liveStatus}>
+      <div
+        className={className}
+        style={style}
+        data-live-status={data.liveStatus}
+        data-simulation-status={data.simulationStatus}
+        data-simulation-current={data.simulationCurrent || undefined}
+      >
         <div className="net-node__meta">
           {!router && icon}
           <span className="net-node__category">{category}</span>
-          {data.liveStatus && <TopologyStatusBadge status={data.liveStatus} />}
+          {data.liveStatus && <TopologyStatusBadge status={data.liveStatus} faultLabel={data.simulatedFault?.badge} />}
         </div>
         <div className="net-node__main">
           {router && icon}
           <strong className="net-node__title">{data.title}</strong>
         </div>
         <span className="net-node__subtitle">{data.subtitle}</span>
+        {id === 'prometheus' && data.simulationStatus === 'visited' && <TopologyStatusBadge status="received" />}
       </div>
 
       <Handle type="source" id="out-right" position={Position.Right} />
       <Handle type="source" id="out-left" position={Position.Left} />
       <Handle type="source" id="out-top" position={Position.Top} />
       <Handle type="source" id="out-bottom" position={Position.Bottom} />
-      {getAdditionalDeviceHandles(id).map(({ id, type, position, offset }) => (
+      {getAdditionalDeviceHandles(id, import.meta.env.DEV).map(({ id, type, position, offset }) => (
         <Handle key={id} id={id} type={type} position={position} style={{ left: offset }} />
       ))}
     </>
