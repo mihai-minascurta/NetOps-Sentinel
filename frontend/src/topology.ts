@@ -332,9 +332,9 @@ const dataLinks = dataConnections.map((connection) => ({
 
 const queryTargetHandle: DiagramHandle = { id: 'in-bottom-query', type: 'target', position: Position.Bottom, offset: 136 };
 
-export function getAdditionalDeviceHandles(id: string, includeSimulation = false): DiagramHandle[] {
+export function getAdditionalDeviceHandles(id: string): DiagramHandle[] {
   if (id === 'db') return dataLinks.map(({ hubHandle }) => hubHandle);
-  if (id === 'prometheus' && includeSimulation) return [queryTargetHandle];
+  if (id === 'prometheus') return [queryTargetHandle];
 
   const connection = dataLinks.find(({ deviceId }) => deviceId === id);
   const handles: DiagramHandle[] = connection ? [connection.sourceHandle] : [];

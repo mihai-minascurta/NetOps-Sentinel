@@ -10,8 +10,7 @@ type ComponentDetailsProps = {
 };
 
 export default function ComponentDetails({ device, panelRef, onClose }: ComponentDetailsProps) {
-  const { title, subtitle, description, liveStatus } = device.data;
-  const simulatedFault = import.meta.env.DEV ? device.data.simulatedFault : undefined;
+  const { title, subtitle, description, liveStatus, simulatedFault } = device.data;
   const { role, technology } = componentMetadata[device.id];
   const port = componentPorts[device.id];
   const { inputs, outputs } = getComponentConnections(device.id);

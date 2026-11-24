@@ -40,10 +40,11 @@ function isSnapshot(value: unknown): value is TopologyStatus {
 }
 
 export function useTopologyStatus(enabled: boolean) {
+  const pollingEnabled = import.meta.env.DEV && enabled;
   const [result, setResult] = useState<{ snapshot: TopologyStatus | null }>(idle);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!pollingEnabled) return;
 
     const baseUrl = (import.meta.env.VITE_API_BASE_URL?.trim() || 'http://localhost:8000').replace(/\/+$/, '');
     let timer: number | undefined;
@@ -94,7 +95,7 @@ export function useTopologyStatus(enabled: boolean) {
       document.removeEventListener('visibilitychange', onVisibilityChange);
       stopPolling();
     };
-  }, [enabled]);
+  }, [pollingEnabled]);
 
-  return enabled ? result : idle;
+  return pollingEnabled ? result : idle;
 }

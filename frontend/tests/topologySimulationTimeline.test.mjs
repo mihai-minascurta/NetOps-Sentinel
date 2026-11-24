@@ -77,7 +77,7 @@ test('one timing configuration drives every step and both scenarios finish witho
   }
 });
 
-test('the dev-only query edge stays outside the selection graph', () => {
+test('the simulation query edge stays outside the selection graph', () => {
   assert.ok(!edges.some((edge) => edge.id === queryId));
   for (const { id } of nodes) assert.ok(!getSelectedEdgeIds(id).has(queryId), id);
 });

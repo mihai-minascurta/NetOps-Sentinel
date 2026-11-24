@@ -103,7 +103,7 @@ export default function DeviceNode({
       <Handle type="source" id="out-left" position={Position.Left} />
       <Handle type="source" id="out-top" position={Position.Top} />
       <Handle type="source" id="out-bottom" position={Position.Bottom} />
-      {getAdditionalDeviceHandles(id, import.meta.env.DEV).map(({ id, type, position, offset }) => (
+      {getAdditionalDeviceHandles(id).map(({ id, type, position, offset }) => (
         <Handle key={id} id={id} type={type} position={position} style={{ left: offset }} />
       ))}
     </>
