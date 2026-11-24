@@ -1,26 +1,35 @@
-# De făcut la final, în ordinea recomandată
+# NetOps Sentinel — TODO
 
-## 1. Rotirea parolei Gmail (urgentă înainte de orice push)
+## 1. Finalizat
+- [x] Infrastructură OCI — R1 + R2
+- [x] Monitoring + Backend + AI Diagnosis
+- [x] Frontend + Incident Simulator
+- [x] Caddy + HTTPS + Let's Encrypt
+- [ ] Confirmare persistență firewall
 
-- [ ] Creezi o parolă de aplicație nouă la `myaccount.google.com/apppasswords`
-- [ ] O scrii pe R2 în `monitoring/secrets/gmail_app_password`, fără să schimbi permisiunile fișierului
-- [ ] `docker compose restart alertmanager`, apoi trimiți o alertă de test și verifici că a ajuns emailul
-- [ ] Revoci parola veche abia după email
-- [ ] Pe laptop: `monitoring/secrets/` în `.gitignore`, apoi `git rm --cached` pe fișier și commit
-- [ ] Verifici `git remote -v`: dacă repo-ul ajunge pe GitHub, doar privat
+## 2. Security — urgent
+- [ ] Rotire parolă Gmail App Password pe R2
+- [ ] Restart Alertmanager și test email
+- [ ] Revocare parolă veche
+- [ ] Excludere secrete din Git și verificare istoric
+- [ ] Repository GitHub privat
 
-## 2. Varianta live (R1 ↔ R2)
+## 3. Live Mode
+- [ ] Recuperare `topology_status.py` din commitul `d31a5c7`
+- [ ] Înregistrare rută în `main.py`
+- [ ] Configurare variabile `.env` pentru Prometheus și Alertmanager
+- [ ] Expunere FastAPI pe IP-ul privat `10.60.2.95:8000`
+- [ ] OCI + firewall: TCP 8000 permis exclusiv din R1 (`10.60.1.245/32`)
+- [ ] Caddy Reverse Proxy: GET `/api/topology/status` → R2
+- [ ] Same-origin API, fără expunerea webhook-ului sau a endpoint-urilor administrative
+- [ ] Activare polling în build-ul de producție
+- [ ] Testare statusuri reale R1/R2 în UI
+- [ ] SSE pentru evenimente și impulsuri în timp real (ulterior)
 
-- [ ] Recuperezi `topology_status.py` din reflog (commitul `d31a5c7`) și montezi ruta în `main.py` pe R2
-- [ ] În `.env` pe R2: `PROMETHEUS_URL`, `ALERTMANAGER_URL` și `TOPOLOGY_CORS_ORIGIN` sau proxy pe aceeași origine
-- [ ] R2 publică API-ul pe IP-ul privat `10.60.2.95:8000`, nu pe `127.0.0.1`
-- [ ] Regulă OCI de ingress: TCP 8000, sursa doar IP-ul privat al lui R1 (`10.60.1.245/32`)
-- [ ] Nginx pe R1 face proxy către R2 doar pe `/api/topology/status`, fără webhook și fără `/incidents/*`
-- [ ] Build de producție cu polling activ (acum e doar în dev)
-- [ ] Test: headerul trece din „Live mode coming soon" în „Live", iar R1/R2 apar UP sau DOWN
-
-## 3. Curățenie și finisaje (opțional, fără grabă)
-
-- [ ] Auditul de curățenie: grupurile A-D (asset-uri nefolosite, `.venv` scos din index, README-uri și `.gitignore`), pe o ramură separată
-- [ ] Decizia pentru `test_prometheus_collector.py`: ori codul citește `PROMETHEUS_URL` din mediu, ori ștergi testul. Până atunci îl lași necomis, iar `incident_manager/` nu-l copiezi de pe laptop peste R2
-- [ ] HTTPS cu domeniu și Certbot, dacă vrei pagina în portofoliu
+## 4. Cleanup
+- [ ] Eliminare asset-uri nefolosite și `.venv` din Git
+- [ ] Actualizare README și `.gitignore`
+- [ ] Rezolvare `test_prometheus_collector.py`
+- [ ] Verificare reînnoire automată TLS
+- [ ] Testare persistență și recuperare după reboot
+- [ ] Domeniu personalizat (opțional)
