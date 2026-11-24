@@ -26,7 +26,7 @@ flowchart LR
     AI --> ADM[Administrator]
 ```
 
-## Infrastructura
+## Infrastructura de laborator
 
 Laboratorul are **două routere** (VM-uri Ubuntu Server) și **două calculatoare** (containere LXC), legate prin trei rețele virtuale libvirt:
 
@@ -106,6 +106,6 @@ Alertmanager trimite alertele la `POST /webhook/alerts`, iar dashboard-urile le 
 
 Aici e doar imaginea de ansamblu. Fiecare parte mare are propriul README:
 
-- **M4, baza de date și API:** [`README_database_api.md`](README_database_api.md)
-- **M5, Investigation Engine:** [`README_engine.md`](README_engine.md)
-- **M6, AI Diagnosis:** [`README_ai_diagnosis.md`](README_ai_diagnosis.md)
+- **M4, baza de date și API:** [`incident_manager/README.md`](incident_manager/README.md)
+- **M5, Investigation Engine:** [`investigation_README.md`](incident_manager/investigation/investigation_README.md)
+- **M6, AI Diagnosis:** [`ai_README.md`](incident_manager/AI_part/ai_README.md)
