@@ -53,7 +53,7 @@ type EdgeKind = 'flow' | 'data' | 'query';
 type RouteState = 'active' | 'dimmed';
 type EdgeLabelSide = 'left' | 'right';
 
-export type DeviceData = {
+type DeviceData = {
   title: string;
   subtitle: string;
   description: string;

@@ -3,7 +3,7 @@ import { isRouterId, type NodeStatus, type TopologyAlert, type TopologyStatus } 
 
 const pollIntervalMs = 5000;
 const requestDeadlineMs = 4000;
-const idle = { snapshot: null, unreachable: false };
+const idle = { snapshot: null };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -40,7 +40,7 @@ function isSnapshot(value: unknown): value is TopologyStatus {
 }
 
 export function useTopologyStatus(enabled: boolean) {
-  const [result, setResult] = useState<{ snapshot: TopologyStatus | null; unreachable: boolean }>(idle);
+  const [result, setResult] = useState<{ snapshot: TopologyStatus | null }>(idle);
 
   useEffect(() => {
     if (!enabled) return;
@@ -62,9 +62,9 @@ export function useTopologyStatus(enabled: boolean) {
         if (!response.ok) throw new Error('Topology request failed');
         const data: unknown = await response.json();
         if (!isSnapshot(data)) throw new Error('Invalid topology response');
-        if (current === request) setResult({ snapshot: data, unreachable: false });
+        if (current === request) setResult({ snapshot: data });
       } catch {
-        if (current === request) setResult({ snapshot: null, unreachable: true });
+        if (current === request) setResult({ snapshot: null });
       } finally {
         window.clearTimeout(deadline);
         if (current === request) {
