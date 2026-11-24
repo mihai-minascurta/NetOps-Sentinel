@@ -2,8 +2,8 @@ import { useEffect, useRef, type CSSProperties } from 'react';
 import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath, type EdgeProps } from '@xyflow/react';
 import { entranceDelayByDevice, simulationQueryRoute, type TopologyEdgeType } from '../topology';
 
-function MovingPulse({ path, startsAt, durationMs, reverse }: {
-  path: string; startsAt: number; durationMs: number; reverse?: boolean;
+function MovingPulse({ path, startsAt, durationMs, reverse, dataPulse }: {
+  path: string; startsAt: number; durationMs: number; reverse?: boolean; dataPulse: boolean;
 }) {
   const motion = useRef<SVGAnimateMotionElement>(null);
   const visibility = useRef<SVGSetElement>(null);
@@ -22,7 +22,7 @@ function MovingPulse({ path, startsAt, durationMs, reverse }: {
 
   const duration = `${durationMs}ms`;
   return (
-    <g className="topology-pulse" visibility="hidden" aria-hidden="true">
+    <g className={dataPulse ? 'topology-pulse topology-pulse--data' : 'topology-pulse'} visibility="hidden" aria-hidden="true">
       <set ref={visibility} attributeName="visibility" to="visible" begin="indefinite" dur={duration} />
       <animateMotion
         ref={motion}
@@ -101,6 +101,7 @@ export default function TopologyEdge({
           startsAt={pulse.startsAt}
           durationMs={pulse.durationMs}
           reverse={pulse.reverse}
+          dataPulse={dotted}
         />
       ))}
       {label && (

@@ -15,6 +15,7 @@ import { Info } from 'lucide-react';
 import CanvasControls from './components/CanvasControls';
 import ComponentDetails from './components/ComponentDetails';
 import DeviceNode from './components/DeviceNode';
+import SimulationLog from './components/SimulationLog';
 import TopologyDemoControls from './components/TopologyDemoControls';
 import TopologyEdge from './components/TopologyEdge';
 import TopologySimulationControls from './components/TopologySimulationControls';
@@ -33,7 +34,7 @@ import {
   type TopologyStatus,
 } from './topology';
 import { getSimulationSnapshot, simulationFaults, transitionSimulation, type SimulationAction, type SimulationState } from './topologySimulation';
-import { getSimulationTimeline, type SimulationSpeed } from './topologySimulationTimeline';
+import { getSimulationTimeline } from './topologySimulationTimeline';
 import { useTopologyPulses } from './useTopologyPulses';
 import { useTopologyStatus } from './useTopologyStatus';
 
@@ -74,15 +75,14 @@ export default function App() {
   const live = useTopologyStatus(devTopology && !demoMode);
   const [simulation, setSimulation] = useState<SimulationState>({ phase: 'idle' });
   const [simulationOpen, setSimulationOpen] = useState(false);
-  const [simulationSpeed, setSimulationSpeed] = useState<SimulationSpeed>('normal');
   const [pulseSession, setPulseSession] = useState(0);
   const simulationSnapshot = useMemo(() => devTopology ? getSimulationSnapshot(simulation) : null, [simulation]);
   const simulationActive = simulationSnapshot !== null;
   const snapshot = simulationSnapshot ?? demoStatus ?? live.snapshot;
   const simulatedScenario = devTopology && simulation.phase === 'running' ? simulation.scenario : null;
   const simulationTimeline = useMemo(() => simulatedScenario
-    ? getSimulationTimeline(simulatedScenario.router, simulatedScenario.fault, simulationSpeed)
-    : null, [simulatedScenario, simulationSpeed]);
+    ? getSimulationTimeline(simulatedScenario.router, simulatedScenario.fault)
+    : null, [simulatedScenario]);
   const [flow, setFlow] = useState<ReactFlowInstance<DiagramNode, TopologyEdgeType> | null>(null);
   const [fittedZoom, setFittedZoom] = useState<number | null>(null);
   const [isFitting, setIsFitting] = useState(false);
@@ -269,10 +269,7 @@ export default function App() {
     const next = transitionSimulation(simulation, action);
     setSimulation(next);
     if (next.phase !== simulation.phase) setPulseSession((session) => session + 1);
-    if (action.type === 'reset') {
-      setSimulationSpeed('normal');
-      closeSimulation();
-    }
+    if (action.type === 'reset') closeSimulation();
   }
 
   function closeSimulation() {
@@ -394,8 +391,6 @@ export default function App() {
         <TopologySimulationControls
           id={simulationPanelId}
           state={simulation}
-          speed={simulationSpeed}
-          onSpeedChange={setSimulationSpeed}
           stepLabel={simulationFrame ? simulationFrame.current?.label ?? 'Complete' : undefined}
           onAction={handleSimulationAction}
           onClose={closeSimulation}
@@ -451,6 +446,7 @@ export default function App() {
               onZoomOut={() => zoomBy(1 / zoomStep)}
               onFit={() => fitDiagram(true)}
             />
+            {devTopology && simulationActive && <SimulationLog entries={simulationFrame?.logEntries ?? []} />}
           </ReactFlow>
 
           {devTopology && demoStatus && !simulationSnapshot && (

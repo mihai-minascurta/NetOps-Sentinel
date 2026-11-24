@@ -54,7 +54,7 @@ test('Custom goes from idle to healthy, starts one fault, and resets', () => {
   assert.equal(snapshot.active_alerts.length, 1);
   assert.deepEqual(snapshot.active_alerts[0], {
     fingerprint: `simulation-r2-network_interfaces-${startedAt}`,
-    alertname: 'Network interfaces',
+    alertname: 'SyntheticNetworkInterfaces',
     severity: 'warning',
     node: 'r2',
     status: 'firing',

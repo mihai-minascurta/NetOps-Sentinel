@@ -50,13 +50,13 @@ function useSimulationPlayback(
   const [clock, setClock] = useState<PlaybackClock | null>(null);
   const activeClock = clock?.session === session ? clock : null;
   const elapsedMs = reducedMotion ? timeline?.durationMs ?? 0 : activeClock?.elapsedMs ?? 0;
-  const frame = useMemo(() => timeline ? getSimulationFrame(timeline, elapsedMs) : null, [elapsedMs, timeline]);
-  const nextBoundary = frame?.current?.endsAtMs;
+  const frame = useMemo(() => getSimulationFrame(timeline, elapsedMs), [elapsedMs, timeline]);
+  const nextBoundary = Math.min(frame?.current?.endsAtMs ?? Infinity, frame?.nextLogAtMs ?? Infinity);
 
   useEffect(() => {
     if (!timeline) return;
 
-    // The single timer advances to the next boundary on the same clock as the SVG pulse.
+    // One clock advances both step boundaries and journal entries alongside the SVG pulses.
     let delay: number;
     let advance: () => PlaybackClock;
     if (reducedMotion) {
@@ -66,7 +66,7 @@ function useSimulationPlayback(
     } else if (!activeClock && fitReady) {
       delay = 0;
       advance = () => ({ session, startedAt: performance.now(), elapsedMs: 0 });
-    } else if (activeClock && nextBoundary !== undefined) {
+    } else if (activeClock && Number.isFinite(nextBoundary)) {
       delay = Math.max(0, Math.ceil(activeClock.startedAt + nextBoundary - performance.now()));
       advance = () => ({
         ...activeClock,
@@ -97,22 +97,25 @@ export function useTopologyPulses(
   const r2Firing = available && Boolean(snapshot?.active_alerts.some((alert) => alert.status === 'firing' && alert.node === 'r2'));
   const r1Start = usePulseCycle(r1Firing, animated, session);
   const r2Start = usePulseCycle(r2Firing, animated, session, 250);
-  const currentStep = frame?.current;
+  const simulationPlaying = Boolean(frame?.current);
 
   const edgeActivities = useMemo(() => {
     const activities = new Map<string, EdgeActivity>();
 
     if (timeline) {
-      if (currentStep && startedAt !== undefined && !reducedMotion) {
-        for (const { edgeId, reverse } of currentStep.moves) {
-          activities.set(edgeId, {
-            pulses: [{
-              id: `${session}-${currentStep.startsAtMs}-${edgeId}`,
-              startsAt: startedAt + currentStep.startsAtMs,
-              durationMs: currentStep.durationMs,
+      if (simulationPlaying && startedAt !== undefined && !reducedMotion) {
+        // Queuing the SVG animations ahead of time also keeps consecutive moves on the same edge visible.
+        for (const { moves, startsAtMs, durationMs } of timeline.steps) {
+          for (const { edgeId, reverse } of moves) {
+            const activity = activities.get(edgeId) ?? { pulses: [] };
+            activity.pulses?.push({
+              id: `${session}-${startsAtMs}-${edgeId}`,
+              startsAt: startedAt + startsAtMs,
+              durationMs,
               reverse,
-            }],
-          });
+            });
+            activities.set(edgeId, activity);
+          }
         }
       }
       return activities;
@@ -140,7 +143,7 @@ export function useTopologyPulses(
     }
 
     return activities;
-  }, [currentStep, r1Firing, r1Start, r2Firing, r2Start, reducedMotion, session, startedAt, timeline]);
+  }, [r1Firing, r1Start, r2Firing, r2Start, reducedMotion, session, simulationPlaying, startedAt, timeline]);
 
   return { edgeActivities, simulationFrame: frame };
 }

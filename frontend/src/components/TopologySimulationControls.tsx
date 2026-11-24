@@ -1,19 +1,16 @@
 import { useRef } from 'react';
 import { isRouterId, routerIds } from '../topology';
 import { simulationFaultIds, simulationFaults, type SimulationAction, type SimulationState } from '../topologySimulation';
-import type { SimulationSpeed } from '../topologySimulationTimeline';
 
 type Props = {
   id: string;
   state: SimulationState;
-  speed: SimulationSpeed;
   stepLabel?: string;
   onAction: (action: SimulationAction) => void;
-  onSpeedChange: (speed: SimulationSpeed) => void;
   onClose: () => void;
 };
 
-export default function TopologySimulationControls({ id, state, speed, stepLabel, onAction, onSpeedChange, onClose }: Props) {
+export default function TopologySimulationControls({ id, state, stepLabel, onAction, onClose }: Props) {
   const stopButton = useRef<HTMLButtonElement>(null);
   const running = state.phase === 'running';
   const setup = state.phase === 'armed' ? state.setup : null;
@@ -99,22 +96,6 @@ export default function TopologySimulationControls({ id, state, speed, stepLabel
             </label>
           </div>
         )}
-
-        <div className="topology-simulation__group" role="radiogroup" aria-label="Simulation speed">
-          <span aria-hidden="true">Speed</span>
-          {(['normal', 'fast'] as const).map((option) => (
-            <label key={option}>
-              <input
-                type="radio"
-                name="simulation-speed"
-                checked={speed === option}
-                disabled={running}
-                onChange={() => onSpeedChange(option)}
-              />
-              {option === 'normal' ? 'Normal' : 'Fast'}
-            </label>
-          ))}
-        </div>
 
         <div className="topology-simulation__group">
           <button
