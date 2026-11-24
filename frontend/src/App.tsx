@@ -59,10 +59,11 @@ const panelTransitionMs = 240;
 const entranceDurationMs = 550;
 const devTopology = import.meta.env.DEV;
 const demoMode = devTopology && new URLSearchParams(window.location.search).get('demo') === '1';
+const simulationPreviewLabel = 'Simulation · Live mode coming soon';
 const simulationPanelId = 'topology-simulation';
 const simulationEdges = devTopology ? [...edges, simulationQueryEdge] : edges;
 
-type FitDimensions = { width: number; height: number; panelWidth: number; simulationActive: boolean };
+type FitDimensions = { width: number; height: number; panelWidth: number };
 
 export default function App() {
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState(nodes);
@@ -141,10 +142,9 @@ export default function App() {
   const entering = fitReady && !entranceDone;
   const finishEntrance = entering ? () => setEntranceDone(true) : undefined;
 
-  let previewLabel = 'Topology preview · Not live';
+  let previewLabel = devTopology ? simulationPreviewLabel : 'Topology preview · Not live';
   if (devTopology && simulationActive) previewLabel = 'Simulation';
   else if (demoStatus) previewLabel = 'Demo';
-  else if (live.unreachable) previewLabel = 'Not live · Backend unreachable';
   else if (snapshot) previewLabel = snapshot.alerts_available ? 'Live' : 'Alerts unavailable';
 
   const displayedEdges = useMemo(() => {
@@ -188,12 +188,12 @@ export default function App() {
     ) return;
 
     const previous = lastFit.current;
-    const sameWorkspaceSize = previous?.width === width && previous.height === height &&
-      previous.simulationActive === simulationActive;
+    const sameWorkspaceSize = previous?.width === width && previous.height === height;
     if (!force && sameWorkspaceSize && previous.panelWidth === panelWidth) return;
 
     const nodeBounds = flow.getNodesBounds(diagramNodeIds);
-    const bounds = simulationActive
+    // Reserve room for the simulation query edge at the initial dev fit.
+    const bounds = devTopology
       ? { ...nodeBounds, height: Math.max(nodeBounds.height, simulationQueryRoute.fitBottomY - nodeBounds.y) }
       : nodeBounds;
     const closedViewport = sameWorkspaceSize && defaultViewport.current
@@ -215,7 +215,7 @@ export default function App() {
     const request = ++fitRequest.current;
 
     defaultViewport.current = closedViewport;
-    lastFit.current = { width, height, panelWidth, simulationActive };
+    lastFit.current = { width, height, panelWidth };
     setFittedZoom(fitted.zoom);
     setIsFitting(duration > 0);
 
@@ -225,7 +225,7 @@ export default function App() {
         if (fitRequest.current === request) setIsFitting(false);
       });
     }
-  }, [flow, nodesMeasured, simulationActive]);
+  }, [flow, nodesMeasured]);
 
   useLayoutEffect(() => {
     const workspace = workspaceRef.current;
@@ -359,11 +359,14 @@ export default function App() {
         </div>
 
         <div className="header-actions">
-          <span className="preview-label">
-            <span role="status">{previewLabel}</span>
-            {snapshot && !demoStatus && !simulationSnapshot && (
-              <> · <time dateTime={snapshot.generated_at}>{new Date(snapshot.generated_at).toLocaleTimeString()}</time></>
-            )}
+          <span className="preview-label" data-stable-width={devTopology || undefined}>
+            {devTopology && <span className="preview-label__sizer" aria-hidden="true">{simulationPreviewLabel}</span>}
+            <span className="preview-label__value">
+              <span role="status">{previewLabel}</span>
+              {snapshot && !demoStatus && !simulationSnapshot && (
+                <> · <time dateTime={snapshot.generated_at}>{new Date(snapshot.generated_at).toLocaleTimeString()}</time></>
+              )}
+            </span>
           </span>
           {devTopology && (
             <button
@@ -387,16 +390,6 @@ export default function App() {
         </div>
       </header>
 
-      {devTopology && simulationOpen && (
-        <TopologySimulationControls
-          id={simulationPanelId}
-          state={simulation}
-          stepLabel={simulationFrame ? simulationFrame.current?.label ?? 'Complete' : undefined}
-          onAction={handleSimulationAction}
-          onClose={closeSimulation}
-        />
-      )}
-
       <main ref={workspaceRef} className="workspace">
         <div
           ref={canvasRef}
@@ -409,6 +402,7 @@ export default function App() {
         >
           <ReactFlow
             forceColorMode="light"
+            proOptions={devTopology ? { hideAttribution: true } : undefined}
             nodes={displayedNodes}
             edges={displayedEdges}
             nodeTypes={nodeTypes}
@@ -439,6 +433,14 @@ export default function App() {
               gap={24}
               size={0.8}
             />
+            {devTopology && simulationOpen && (
+              <TopologySimulationControls
+                id={simulationPanelId}
+                state={simulation}
+                onAction={handleSimulationAction}
+                onClose={closeSimulation}
+              />
+            )}
             <CanvasControls
               defaultZoom={isFitting ? null : fittedZoom}
               minimumZoom={isFitting ? undefined : minimumZoom}
