@@ -5,10 +5,13 @@ import App from './App.tsx'
 import Dashboard from './dashboard/Dashboard.tsx'
 import { dashboardSample } from './dashboard/dashboardSample.ts'
 
-const showDashboard = new URLSearchParams(window.location.search).get('view') === 'dashboard'
+const params = new URLSearchParams(window.location.search)
+const view = params.get('view')
+const showTopology = view === 'topology' ||
+  (view === null && import.meta.env.DEV && params.get('demo') === '1')
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {showDashboard ? <Dashboard sample={dashboardSample} /> : <App />}
+    {showTopology ? <App /> : <Dashboard sample={dashboardSample} />}
   </StrictMode>,
 )
