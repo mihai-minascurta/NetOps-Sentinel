@@ -12,4 +12,5 @@ monitoring/secrets/
 # Python environment
 .venv/
 
-
+# AI-generated frontend
+/frontend/
