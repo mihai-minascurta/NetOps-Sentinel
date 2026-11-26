@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 340" width="900" height="340" role="img" aria-label="NetOps Sentinel: two routers and two hosts under Prometheus monitoring. When R1 goes down, an alert opens an incident, the engine collects evidence, an AI model suggests a cause and a human decides" xmlns:c2pa="http://c2pa.org/manifest">
+  <style>
+    :root { --fg:#1f2328; --mut:#6e7781; --line:#d0d7de; --edge:#c3cbd3; --acc:#c2790c; --ok:#1a7f37; }
+    @media (prefers-color-scheme: dark) {
+      :root { --fg:#f0f6fc; --mut:#9198a1; --line:#30363d; --edge:#3d444d; --acc:#e8a84f; --ok:#3fb950; }
+    }
+    text  { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .title  { font-size: 44px; font-weight: 700; fill: var(--fg); letter-spacing: -0.8px; }
+    .tag    { font-size: 15px; fill: var(--mut); }
+    .status { font-size: 14px; fill: var(--mut); }
+    .rule   { stroke: var(--line); stroke-width: 1; }
+    .pill   { fill: none; stroke: var(--edge); stroke-width: 1.2; }
+    .al     { fill: none; stroke: var(--acc); stroke-width: 1.5; }
+    .t      { font-size: 13px; font-weight: 600; fill: var(--fg); text-anchor: middle; }
+    .s      { font-size: 10px; fill: var(--mut); text-anchor: middle; }
+    .link   { stroke: var(--edge); stroke-width: 2; fill: none; stroke-linecap: round; }
+    .fault  { stroke: var(--acc); stroke-width: 2; stroke-dasharray: 4 5; fill: none; stroke-linecap: round; }
+    .lit    { stroke: var(--acc); stroke-width: 2; fill: none; stroke-linecap: round; }
+    .scr    { stroke: var(--edge); stroke-width: 1.2; stroke-dasharray: 3 4; fill: none; }
+    .okdot  { fill: var(--ok); }
+    .altdot { fill: var(--acc); }
+    .sc     { fill: var(--mut); }
+    .ringa  { fill: none; stroke: var(--acc); stroke-width: 1.5; }
+    .ringo  { fill: none; stroke: var(--ok); stroke-width: 1.5; }
+    .cap    { font-size: 13px; fill: var(--fg); }
+    .code   { font-size: 10px; fill: var(--mut); }
+    .st     { font-size: 15px; font-weight: 600; fill: var(--fg); }
+    .sq     { fill: none; stroke: var(--edge); stroke-width: 1.2; }
+    .sqf    { fill: var(--acc); }
+    .tagt   { font-size: 12px; fill: var(--mut); }
+    .msg    { font-size: 14px; fill: var(--fg); }
+    .msgb   { font-size: 14px; font-weight: 600; fill: var(--fg); }
+  </style>
+  <text class="title" x="48" y="58">NetOps Sentinel</text>
+  <text class="tag mono" x="48" y="86">a network lab that notices when something breaks</text>
+  <circle class="okdot" cx="52" cy="114" r="4"/>
+  <circle class="ringo" cx="52" cy="114" r="4">
+    <animate attributeName="r" values="4;13" dur="2.8s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.7;0" dur="2.8s" repeatCount="indefinite"/>
+  </circle>
+  <text class="status" x="68" y="119">Simulator UI online. Live version coming next.</text>
+  <line class="rule" x1="48" y1="140" x2="852" y2="140"/>
+  <line class="link" x1="170" y1="262" x2="270" y2="262"/>
+  <line class="link" x1="390" y1="262" x2="510" y2="262"/>
+  <line class="link" x1="630" y1="262" x2="730" y2="262"/>
+  <path class="scr" d="M420 212 C420 230 330 224 330 240"/>
+  <path class="scr" d="M480 212 C480 230 570 224 570 240"/>
+  <path class="scr" d="M512 190 H616"/>
+  <line class="fault" x1="170" y1="262" x2="270" y2="262" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.3125;0.3312;0.875;0.9;1" dur="16s" repeatCount="indefinite"/></line>
+  <line class="fault" x1="390" y1="262" x2="510" y2="262" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.3125;0.3312;0.875;0.9;1" dur="16s" repeatCount="indefinite"/></line>
+  <path class="lit" d="M512 190 H616" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.4375;0.4562;0.8125;0.8375;1" dur="16s" repeatCount="indefinite"/></path>
+  <rect class="pill" x="50" y="240" width="120" height="44" rx="10"/>
+  <rect class="pill" x="270" y="240" width="120" height="44" rx="10"/>
+  <rect class="pill" x="510" y="240" width="120" height="44" rx="10"/>
+  <rect class="pill" x="730" y="240" width="120" height="44" rx="10"/>
+  <rect class="pill" x="390" y="168" width="120" height="44" rx="10"/>
+  <rect class="al" x="390" y="168" width="120" height="44" rx="10" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.425;0.4437;0.8125;0.8375;1" dur="16s" repeatCount="indefinite"/></rect>
+  <text class="t" x="110" y="261">host-r1</text>
+  <text class="s mono" x="110" y="275">172.16.1.10</text>
+  <circle class="okdot" cx="158" cy="251" r="3.5"/>
+  <text class="t" x="330" y="261">R1</text>
+  <text class="s mono" x="330" y="275">netops-r1</text>
+  <circle class="okdot" cx="378" cy="251" r="3.5"><animate attributeName="opacity" values="1;1;0;0;1;1" keyTimes="0;0.3125;0.325;0.875;0.8938;1" dur="16s" repeatCount="indefinite"/></circle>
+  <circle class="altdot" cx="378" cy="251" r="3.5" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.3125;0.325;0.875;0.8938;1" dur="16s" repeatCount="indefinite"/></circle>
+  <text class="t" x="570" y="261">R2</text>
+  <text class="s mono" x="570" y="275">netops-r2</text>
+  <circle class="okdot" cx="618" cy="251" r="3.5"/>
+  <text class="t" x="790" y="261">host-r2</text>
+  <text class="s mono" x="790" y="275">172.16.2.10</text>
+  <circle class="okdot" cx="838" cy="251" r="3.5"/>
+  <text class="t" x="450" y="189">Prometheus</text>
+  <text class="s mono" x="450" y="203">scrapes R1, R2</text>
+  <circle class="okdot" cx="498" cy="179" r="3.5"><animate attributeName="opacity" values="1;1;0;0;1;1" keyTimes="0;0.425;0.4375;0.8125;0.8313;1" dur="16s" repeatCount="indefinite"/></circle>
+  <circle class="altdot" cx="498" cy="179" r="3.5" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.425;0.4375;0.8125;0.8313;1" dur="16s" repeatCount="indefinite"/></circle>
+  <circle class="ringa" cx="378" cy="251" r="4" opacity="0">
+    <animate attributeName="r" values="4;4;16;16" keyTimes="0;0.3125;0.3875;1" dur="16s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0;0;0.8;0;0" keyTimes="0;0.3115;0.3125;0.3875;1" dur="16s" repeatCount="indefinite"/>
+  </circle>
+  <circle class="ringa" cx="378" cy="251" r="4" opacity="0">
+    <animate attributeName="r" values="4;4;16;16" keyTimes="0;0.4;0.475;1" dur="16s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0;0;0.8;0;0" keyTimes="0;0.399;0.4;0.475;1" dur="16s" repeatCount="indefinite"/>
+  </circle>
+  <circle class="ringa" cx="378" cy="251" r="4" opacity="0">
+    <animate attributeName="r" values="4;4;16;16" keyTimes="0;0.4875;0.5625;1" dur="16s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0;0;0.8;0;0" keyTimes="0;0.4865;0.4875;0.5625;1" dur="16s" repeatCount="indefinite"/>
+  </circle>
+  <g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0;1;1;0;0" keyTimes="0;0.0125;0.0281;0.3063;0.3313;0.9062;0.9219;0.9625;0.9875;1" dur="16s" repeatCount="indefinite"/><animateMotion path="M170 262 H270" dur="1.4s" begin="-0.0s" repeatCount="indefinite"/><circle class="okdot" r="3"/></g>
+  <g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0;1;1;0;0" keyTimes="0;0.0125;0.0281;0.3063;0.3313;0.9062;0.9219;0.9625;0.9875;1" dur="16s" repeatCount="indefinite"/><animateMotion path="M270 262 H170" dur="1.4s" begin="-0.7s" repeatCount="indefinite"/><circle class="okdot" r="3"/></g>
+  <g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0;1;1;0;0" keyTimes="0;0.0125;0.0281;0.3063;0.3313;0.9062;0.9219;0.9625;0.9875;1" dur="16s" repeatCount="indefinite"/><animateMotion path="M390 262 H510" dur="1.4s" begin="-0.35s" repeatCount="indefinite"/><circle class="okdot" r="3"/></g>
+  <g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0;1;1;0;0" keyTimes="0;0.0125;0.0281;0.3063;0.3313;0.9062;0.9219;0.9625;0.9875;1" dur="16s" repeatCount="indefinite"/><animateMotion path="M510 262 H390" dur="1.4s" begin="-1.05s" repeatCount="indefinite"/><circle class="okdot" r="3"/></g>
+  <g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0;1;1;0;0" keyTimes="0;0.0125;0.0281;0.3063;0.3313;0.9062;0.9219;0.9625;0.9875;1" dur="16s" repeatCount="indefinite"/><animateMotion path="M630 262 H730" dur="1.4s" begin="-0.7s" repeatCount="indefinite"/><circle class="okdot" r="3"/></g>
+  <g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0;1;1;0;0" keyTimes="0;0.0125;0.0281;0.3063;0.3313;0.9062;0.9219;0.9625;0.9875;1" dur="16s" repeatCount="indefinite"/><animateMotion path="M730 262 H630" dur="1.4s" begin="-1.4s" repeatCount="indefinite"/><circle class="okdot" r="3"/></g>
+  <g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0;1;1;0;0" keyTimes="0;0.0125;0.0281;0.3063;0.3313;0.9062;0.9219;0.9625;0.9875;1" dur="16s" repeatCount="indefinite"/><animateMotion path="M330 240 C330 224 420 230 420 212" dur="2s" begin="-0s" repeatCount="indefinite"/><circle class="sc" r="2.5"/></g>
+  <g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.0125;0.0281;0.9625;0.9875;1" dur="16s" repeatCount="indefinite"/><animateMotion path="M570 240 C570 224 480 230 480 212" dur="2s" begin="-1.0s" repeatCount="indefinite"/><circle class="sc" r="2.5"/></g>
+  <g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.4375;0.4531;0.8063;0.8313;1" dur="16s" repeatCount="indefinite"/><animateMotion path="M512 190 H616" dur="1.4s" begin="-0s" repeatCount="indefinite"/><circle class="altdot" r="3"/></g>
+  <g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.625;0.6406;0.8063;0.8313;1" dur="16s" repeatCount="indefinite"/><animateMotion path="M616 190 H512" dur="1.4s" begin="-0.7s" repeatCount="indefinite"/><circle class="altdot" r="3"/></g>
+  <rect class="pill" x="616" y="158" width="236" height="62" rx="10" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.4375;0.4562;0.9625;0.9875;1" dur="16s" repeatCount="indefinite"/></rect>
+  <text class="code mono" x="632" y="178" opacity="0">incident<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.4375;0.4562;0.9625;0.9875;1" dur="16s" repeatCount="indefinite"/></text>
+  <text class="code mono" x="770" y="178" opacity="0">evidence<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.4375;0.4562;0.9625;0.9875;1" dur="16s" repeatCount="indefinite"/></text>
+  <circle class="altdot" cx="634" cy="197" r="4" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.4437;0.4625;0.8125;0.8375;1" dur="16s" repeatCount="indefinite"/></circle>
+  <circle class="okdot" cx="634" cy="197" r="4" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.8125;0.8313;0.9563;0.9813;1" dur="16s" repeatCount="indefinite"/></circle>
+  <text class="st" x="648" y="202" opacity="0">open<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.4437;0.4625;0.6188;0.6438;1" dur="16s" repeatCount="indefinite"/></text>
+  <text class="st" x="648" y="202" opacity="0">investigating<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.625;0.6438;0.8063;0.8313;1" dur="16s" repeatCount="indefinite"/></text>
+  <text class="st" x="648" y="202" opacity="0">resolved<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.8125;0.8313;0.9563;0.9813;1" dur="16s" repeatCount="indefinite"/></text>
+  <rect class="sq" x="770" y="188" width="9" height="9" rx="2" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.4375;0.4562;0.9625;0.9875;1" dur="16s" repeatCount="indefinite"/></rect>
+  <rect class="sqf" x="770" y="188" width="9" height="9" rx="2" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.6438;0.6562;0.9375;0.9625;1" dur="16s" repeatCount="indefinite"/></rect>
+  <rect class="sq" x="783" y="188" width="9" height="9" rx="2" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.4375;0.4562;0.9625;0.9875;1" dur="16s" repeatCount="indefinite"/></rect>
+  <rect class="sqf" x="783" y="188" width="9" height="9" rx="2" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.6688;0.6813;0.9375;0.9625;1" dur="16s" repeatCount="indefinite"/></rect>
+  <rect class="sq" x="796" y="188" width="9" height="9" rx="2" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.4375;0.4562;0.9625;0.9875;1" dur="16s" repeatCount="indefinite"/></rect>
+  <rect class="sqf" x="796" y="188" width="9" height="9" rx="2" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.6938;0.7063;0.9375;0.9625;1" dur="16s" repeatCount="indefinite"/></rect>
+  <rect class="sq" x="809" y="188" width="9" height="9" rx="2" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.4375;0.4562;0.9625;0.9875;1" dur="16s" repeatCount="indefinite"/></rect>
+  <rect class="sqf" x="809" y="188" width="9" height="9" rx="2" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.7188;0.7312;0.9375;0.9625;1" dur="16s" repeatCount="indefinite"/></rect>
+  <rect class="sq" x="822" y="188" width="9" height="9" rx="2" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.4375;0.4562;0.9625;0.9875;1" dur="16s" repeatCount="indefinite"/></rect>
+  <rect class="sqf" x="822" y="188" width="9" height="9" rx="2" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.7438;0.7562;0.9375;0.9625;1" dur="16s" repeatCount="indefinite"/></rect>
+  <text class="cap" x="48" y="322" opacity="0">Healthy. Traffic flows between the two LANs and Prometheus keeps scraping.<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.0187;0.0375;0.3;0.325;1" dur="16s" repeatCount="indefinite"/></text>
+  <text class="cap" x="48" y="322" opacity="0">R1 stops answering.<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.3125;0.3312;0.425;0.45;1" dur="16s" repeatCount="indefinite"/></text>
+  <text class="cap" x="48" y="322" opacity="0">Prometheus raises an alert and the API opens an incident.<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.4375;0.4562;0.6125;0.6375;1" dur="16s" repeatCount="indefinite"/></text>
+  <text class="cap" x="48" y="322" opacity="0">The engine collects evidence and an AI model suggests a cause.<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.625;0.6438;0.8;0.825;1" dur="16s" repeatCount="indefinite"/></text>
+  <text class="cap" x="48" y="322" opacity="0">You decide and fix it. The AI changes nothing.<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.8125;0.8313;0.9625;0.9875;1" dur="16s" repeatCount="indefinite"/></text>
+<metadata><c2pa:manifest>AAAWgmp1bWIAAAAeanVtZGMycGEAEQAQgAAAqgA4m3EDYzJwYQAAABZcanVtYgAAAEdqdW1kYzJtYQARABCAAACqADibcQN1cm46YzJwYTo4ZTM3NzJkMS1lZTg0LTRlYWYtOGQ1Mi1hYTQ4OGFkZjFjODQAAAADl2p1bWIAAAApanVtZGMyYXMAEQAQgAAAqgA4m3EDYzJwYS5hc3NlcnRpb25zAAAAALxqdW1iAAAARGp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuaW5ncmVkaWVudC52MwAAAAAYYzJzaPwlKMwxOI5RYHEvNB/irdsAAABwY2JvcqNpZGM6Zm9ybWF0bWltYWdlL3N2Zyt4bWxqaW5zdGFuY2VJRHgseG1wOmlpZDpkMGYwNWViNi0wNTRmLTRiMDgtOTI1Yy03MTUxNjFhY2ZiNThscmVsYXRpb25zaGlwaHBhcmVudE9mAAAB4mp1bWIAAABBanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5hY3Rpb25zLnYyAAAAABhjMnNoFwVmt0ZUPfdC1+bKTSWOAQAAAZljYm9yomdhY3Rpb25zgqJmYWN0aW9ua2MycGEub3BlbmVkanBhcmFtZXRlcnOha2luZ3JlZGllbnRzgaJjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFggRCZhPRMAra1fSif+mq9pKKwsxDG4QaabAVJ0uMBpCXOkZmFjdGlvbngdY29tLmFudGhyb3BpYy5jbGF1ZGUucHJvdmlkZWRqcGFyYW1ldGVyc6F4H2NvbS5hbnRocm9waWMub3JpZ2luLWNvbmZpZGVuY2VndW5rbm93bmtkZXNjcmlwdGlvbnhmQ2xhdWRlIHByb3ZpZGVkIHRoaXMgZmlsZSBhdCB0aGUgcmVxdWVzdCBvZiBhIHVzZXIgYW5kIG1heSBoYXZlIGNyZWF0ZWQgb3IgbW9kaWZpZWQgdGhlIGZpbGUgY29udGVudHMubXNvZnR3YXJlQWdlbnShZG5hbWVmQ2xhdWRlcmFsbEFjdGlvbnNJbmNsdWRlZPUAAADIanVtYgAAAEBqdW1kY2JvcgARABCAAACqADibcRNjMnBhLmhhc2guZGF0YQAAAAAYYzJzaEB7Osr6/egafdeQC/8GBE4AAACAY2JvcqVjYWxnZnNoYTI1NmNwYWRMAAAAAAAAAAAAAAAAZGhhc2hYIBrynXddjxCUfHXPu6v7nsdYV7F/Qp39kLZhzRpsb9nWZG5hbWVuanVtYmYgbWFuaWZlc3RqZXhjbHVzaW9uc4GiZXN0YXJ0GTpkZmxlbmd0aBkeBAAAAj5qdW1iAAAAJ2p1bWRjMmNsABEAEIAAAKoAOJtxA2MycGEuY2xhaW0udjIAAAACD2Nib3KlY2FsZ2ZzaGEyNTZpc2lnbmF0dXJleE1zZWxmI2p1bWJmPS9jMnBhL3VybjpjMnBhOjhlMzc3MmQxLWVlODQtNGVhZi04ZDUyLWFhNDg4YWRmMWM4NC9jMnBhLnNpZ25hdHVyZWppbnN0YW5jZUlEeCx4bXA6aWlkOmFkMTQ5ZjAwLWE1ZjItNGUyNS1iMWE3LWE5ZjMzNjE2MmFlMHJjcmVhdGVkX2Fzc2VydGlvbnODomN1cmx4LXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaW5ncmVkaWVudC52M2RoYXNoWCBEJmE9EwCtrV9KJ/6ar2korCzEMbhBppsBUnS4wGkJc6JjdXJseCpzZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmFjdGlvbnMudjJkaGFzaFgg0AsAc8Txovg8OUymQldlslw7CoDxwUbchvAS3BzspcqiY3VybHgpc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5oYXNoLmRhdGFkaGFzaFggeCcBIBy4u3aWQBgJAunSjFLuoPwrlrI2pwfnm8PlCal0Y2xhaW1fZ2VuZXJhdG9yX2luZm+jZG5hbWVvQW50aHJvcGljIEZpbGVzZ3ZlcnNpb25lMS4wLjBrc3BlY1ZlcnNpb25lMi40LjAAABA4anVtYgAAAChqdW1kYzJjcwARABCAAACqADibcQNjMnBhLnNpZ25hdHVyZQAAABAIY2JvctKEWQISogEmGCFZAgowggIGMIIBjaADAgECAhRA5aAK7sI50L64g/oGQgU9Z1UTADAKBggqhkjOPQQDAzBJMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEuMCwGA1UEAxMlQW50aHJvcGljIENvbnRlbnQgQ3JlZGVudGlhbHMgUm9vdCBDQTAeFw0yNjA4MDcxODQzNTZaFw0yODA4MDYxOTQzNTZaMEQxFzAVBgNVBAoTDkFudGhyb3BpYywgUEJDMSkwJwYDVQQDEyBBbnRocm9waWMgQ2xhdWRlIENvbnRlbnQgU2lnbmluZzBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJh6CmvLUBgFFNU0vUKlOVtE6djd17L5SuwX0LemFisBM3dkd/3cyjxFA3Qo5S46fX0/ihY0VZ7mfb9KF703t5OjWDBWMA4GA1UdDwEB/wQEAwIHgDAVBgNVHSUEDjAMBgorBgEEAYPoXgIBMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAUzlHiBIFOZFsj+OPEz5o+nMHXXMIwCgYIKoZIzj0EAwMDZwAwZAIwMXMdFJ4BetLLVY7ORuE9noqbbAZOZn/aArXyTwFAZfKrPzxF2vPoJNf1+UCdg1XGAjBwX1zd9WGqYkqmL5SFqw1QySjr1zJfpJM9+1rdDwSPLMOPOjKuiXjoU/pUUeG9RwmhY3BhZFkNngAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPZYQPS2uk8OHlpm/57ie3ZRqCF5iCAPncuBtC5tEHs21KkwBL3wRVM3sCLUlAPySQxJzjs5ZXDkHkOcibeLYxhKkcQ=</c2pa:manifest></metadata></svg>

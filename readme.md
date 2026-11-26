@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/flow.svg" alt="NetOps Sentinel: a router goes down and the alert travels through Prometheus, Alertmanager, the incident API and the engine to an AI diagnosis, then to a human who decides" width="100%">
+  <img src="assets/topology.svg" alt="NetOps Sentinel: two routers and two hosts under Prometheus monitoring. When R1 goes down, an alert opens an incident, the engine collects evidence, an AI model suggests a cause and a human decides" width="100%">
 </p>
 
 **Simulator UI:** [netopssentinel.duckdns.org](https://netopssentinel.duckdns.org/) is the HTTP version of the interface, running as a simulator. The live version, connected to the real lab, is coming next.
@@ -10,9 +10,9 @@ A network lab built from scratch that **notices when something breaks** and tell
 
 ## How it works
 
-When a router goes down, **Prometheus** raises an alert and **Alertmanager** forwards it to the API. The API opens an **incident**, the **engine** collects evidence from Prometheus (status, CPU, RAM, disk, network) and an **AI model** reads it and suggests a likely cause.
-
-The AI is read-only. It gives an opinion and changes nothing in the system: **you decide.**
+<p align="center">
+  <img src="assets/log.svg" alt="How an incident unfolds: Prometheus raises an alert, Alertmanager forwards it to the API, the API opens an incident, the engine collects evidence, an AI model suggests a cause and a human decides" width="100%">
+</p>
 
 ## Stack
 
