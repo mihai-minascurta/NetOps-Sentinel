@@ -45,6 +45,11 @@ function scenarioSeed(router: RouterId, fault: FaultId | null): number {
   return [...`${router}-${fault ?? 'healthy'}`].reduce((hash, char) => Math.imul(hash ^ char.charCodeAt(0), 16777619), 2166136261);
 }
 
+export function getSimulationIncidentNumber(router: RouterId, fault: FaultId) {
+  const random = createSimulationRandom(scenarioSeed(router, fault));
+  return 100 + Math.floor(random() * 900);
+}
+
 export function getSimulationMeasurements(
   router: RouterId,
   fault: FaultId | null,

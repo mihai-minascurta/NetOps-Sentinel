@@ -9,6 +9,7 @@ import {
 import { getSimulationFrame, type SimulationTimeline } from './topologySimulationTimeline';
 
 const reducedMotionQuery = '(prefers-reduced-motion: reduce)';
+const elapsedDisplayIntervalMs = 1000;
 
 function subscribeReducedMotion(onChange: () => void) {
   const media = window.matchMedia(reducedMotionQuery);
@@ -46,17 +47,21 @@ function useSimulationPlayback(
   fitReady: boolean,
   session: number,
   reducedMotion: boolean,
+  trackElapsed: boolean,
 ) {
   const [clock, setClock] = useState<PlaybackClock | null>(null);
   const activeClock = clock?.session === session ? clock : null;
   const elapsedMs = reducedMotion ? timeline?.durationMs ?? 0 : activeClock?.elapsedMs ?? 0;
   const frame = useMemo(() => getSimulationFrame(timeline, elapsedMs), [elapsedMs, timeline]);
-  const nextBoundary = Math.min(frame?.current?.endsAtMs ?? Infinity, frame?.nextLogAtMs ?? Infinity);
+  const nextDisplayTick = trackElapsed && frame?.current
+    ? (Math.floor(elapsedMs / elapsedDisplayIntervalMs) + 1) * elapsedDisplayIntervalMs
+    : Infinity;
+  const nextBoundary = Math.min(frame?.current?.endsAtMs ?? Infinity, frame?.nextLogAtMs ?? Infinity, nextDisplayTick);
 
   useEffect(() => {
     if (!timeline) return;
 
-    // One clock advances both step boundaries and journal entries alongside the SVG pulses.
+    // The same clock advances steps, journal entries and the elapsed display alongside the SVG pulses.
     let delay: number;
     let advance: () => PlaybackClock;
     if (reducedMotion) {
@@ -88,9 +93,10 @@ export function useTopologyPulses(
   fitReady: boolean,
   session: number,
   timeline: SimulationTimeline | null,
+  { trackElapsed = false }: { trackElapsed?: boolean } = {},
 ) {
   const reducedMotion = useSyncExternalStore(subscribeReducedMotion, prefersReducedMotion, () => false);
-  const { frame, startedAt } = useSimulationPlayback(timeline, fitReady, session, reducedMotion);
+  const { frame, startedAt } = useSimulationPlayback(timeline, fitReady, session, reducedMotion, trackElapsed);
   const available = Boolean(!timeline && snapshot?.alerts_available && fitReady);
   const animated = available && !reducedMotion;
   const r1Firing = available && Boolean(snapshot?.active_alerts.some((alert) => alert.status === 'firing' && alert.node === 'r1'));

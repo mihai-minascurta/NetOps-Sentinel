@@ -1,46 +1,48 @@
 import { simulationQueryEdge } from '../topology.ts';
 
 type NodeRect = { x: number; y: number; width: number; height: number };
+type Point = readonly [x: number, y: number];
 
-const card = (x: number, y: number): NodeRect => ({ x, y, width: 190, height: 64 });
+const wideCard = (x: number, y: number): NodeRect => ({ x, y, width: 184, height: 76 });
+const compactCard = (x: number, y: number): NodeRect => ({ x, y, width: 202, height: 74 });
 
 const wide = {
-  width: 1268,
-  height: 904,
+  width: 1220,
+  height: 900,
   nodes: {
-    r1: card(0, 28),
-    r2: card(0, 148),
-    prometheus: card(214, 88),
-    alertmanager: card(428, 88),
-    backend: card(642, 88),
-    alerts: card(856, 88),
-    incident: card(1070, 88),
-    email: card(428, 182),
-    db: { x: 44, y: 274, width: 1156, height: 466 },
-    investigation: card(1070, 822),
-    evidence: card(713, 822),
-    ai: card(356, 822),
-    mcp: card(0, 822),
+    r1: wideCard(10, 54),
+    r2: wideCard(10, 166),
+    prometheus: wideCard(214, 110),
+    alertmanager: wideCard(414, 110),
+    backend: wideCard(614, 110),
+    alerts: wideCard(814, 110),
+    incident: wideCard(1014, 110),
+    email: wideCard(414, 229),
+    db: { x: 70, y: 344, width: 1084, height: 352 },
+    investigation: wideCard(1014, 770),
+    evidence: wideCard(710, 770),
+    ai: wideCard(406, 770),
+    mcp: wideCard(102, 770),
   },
 };
 
 const compact: typeof wide = {
-  width: 704,
-  height: 604,
+  width: 680,
+  height: 630,
   nodes: {
-    r1: card(8, 8),
-    r2: card(8, 96),
-    prometheus: card(230, 52),
-    alertmanager: card(492, 52),
-    backend: card(8, 234),
-    alerts: card(248, 234),
-    incident: card(492, 234),
-    email: card(492, 140),
-    db: { x: 8, y: 322, width: 658, height: 98 },
-    investigation: card(492, 444),
-    evidence: card(248, 444),
-    ai: card(34, 444),
-    mcp: card(8, 532),
+    r1: compactCard(10, 14),
+    r2: compactCard(10, 106),
+    prometheus: compactCard(232, 60),
+    alertmanager: compactCard(455, 60),
+    backend: compactCard(10, 246),
+    alerts: compactCard(232, 246),
+    incident: compactCard(455, 246),
+    email: compactCard(455, 153),
+    db: { x: 10, y: 344, width: 636, height: 86 },
+    investigation: compactCard(455, 456),
+    evidence: compactCard(232, 456),
+    ai: compactCard(10, 456),
+    mcp: compactCard(10, 546),
   },
 };
 
@@ -48,61 +50,92 @@ const right = (node: NodeRect) => node.x + node.width;
 const bottom = (node: NodeRect) => node.y + node.height;
 const centerX = (node: NodeRect) => node.x + node.width / 2;
 const centerY = (node: NodeRect) => node.y + node.height / 2;
+const point = ([x, y]: Point) => `${x} ${y}`;
+const toward = (from: Point, to: Point, fraction: number): Point => [
+  from[0] + (to[0] - from[0]) * fraction,
+  from[1] + (to[1] - from[1]) * fraction,
+];
+const distance = (a: Point, b: Point) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]);
 
-function horizontalFlow(source: NodeRect, target: NodeRect) {
+function roundedPath(points: readonly Point[]) {
+  let path = `M${point(points[0])}`;
+  for (let index = 1; index < points.length - 1; index++) {
+    const [previous, corner, next] = points.slice(index - 1, index + 2);
+    const incoming = distance(previous, corner);
+    const outgoing = distance(corner, next);
+    const radius = Math.min(10, incoming / 2, outgoing / 2);
+    if (radius === 0) continue;
+
+    const before = toward(corner, previous, radius / incoming);
+    const after = toward(corner, next, radius / outgoing);
+    path += ` L${point(before)} Q${point(corner)} ${point(after)}`;
+  }
+  return `${path} L${point(points[points.length - 1])}`;
+}
+
+function horizontalFlow(source: NodeRect, target: NodeRect): Point[] {
   return target.x > source.x
-    ? `M${right(source)} ${centerY(source)} H${target.x}`
-    : `M${source.x} ${centerY(source)} H${right(target)}`;
+    ? [[right(source), centerY(source)], [target.x, centerY(target)]]
+    : [[source.x, centerY(source)], [right(target), centerY(target)]];
 }
 
 function placeEdges(template: typeof wide, wrapped: boolean) {
   const { width, height, nodes } = template;
   const { r1, r2, prometheus, alertmanager, email, backend, alerts, incident, db, investigation, evidence, ai, mcp } = nodes;
   const scrapeTurn = (right(r1) + prometheus.x) / 2;
-  const scrape = (router: NodeRect, portY: number) =>
-    `M${right(router)} ${centerY(router)} H${scrapeTurn} V${portY} H${prometheus.x}`;
-  const toHubFromAbove = (node: NodeRect, portX = centerX(node)) =>
-    `M${portX} ${bottom(node)} V${db.y}`;
-  const toHubFromBelow = (node: NodeRect, portX = centerX(node)) =>
-    `M${portX} ${node.y} V${bottom(db)}`;
+  const scrape = (router: NodeRect, portY: number): Point[] => [
+    [right(router), centerY(router)], [scrapeTurn, centerY(router)], [scrapeTurn, portY], [prometheus.x, portY],
+  ];
+  const toHubFromAbove = (node: NodeRect, portX = centerX(node)): Point[] => [[portX, bottom(node)], [portX, db.y]];
+  const toHubFromBelow = (node: NodeRect): Point[] => [[centerX(node), node.y], [centerX(node), bottom(db)]];
 
-  const outsideRight = width - 1;
-  // In the compact view, the alert flow resumes on the left of the next row.
-  const webhookFlow = wrapped
-    ? `M${alertmanager.x + 20} ${bottom(alertmanager)} V${bottom(alertmanager) + 12} H${email.x - 12} V${backend.y - 12} H${centerX(backend)} V${backend.y}`
-    : horizontalFlow(alertmanager, backend);
-  const mcpFlow = wrapped
-    ? `M${centerX(ai)} ${bottom(ai)} V${mcp.y - 12} H${centerX(mcp)} V${mcp.y}`
-    : horizontalFlow(ai, mcp);
-  // Use the corridor beside the hub and approach Prometheus from the open side.
-  const queryPath = wrapped
-    ? `M${right(investigation)} ${centerY(investigation) - 16} H${outsideRight - 11} V${prometheus.y - 18} H${centerX(prometheus)} V${prometheus.y}`
-    : `M${right(investigation) - 36} ${investigation.y} V${db.y - 12} H${centerX(prometheus)} V${bottom(prometheus)}`;
+  const outsideRight = width - 4;
+  const webhookX = alertmanager.x + 20;
+  const webhookBendY = bottom(alertmanager) + 12;
+  const webhookApproachY = backend.y - 12;
+  const webhookFlow: Point[] = wrapped ? [
+    [webhookX, bottom(alertmanager)], [webhookX, webhookBendY], [email.x - 12, webhookBendY],
+    [email.x - 12, webhookApproachY], [centerX(backend), webhookApproachY], [centerX(backend), backend.y],
+  ] : horizontalFlow(alertmanager, backend);
 
-  const paths: Readonly<Record<string, string>> = {
-    'r1-prom': scrape(r1, prometheus.y + 20),
-    'r2-prom': scrape(r2, prometheus.y + 44),
+  const queryX = wrapped ? outsideRight - 10 : right(investigation) - 36;
+  const queryY = wrapped ? prometheus.y - 18 : db.y - 12;
+  const querySourceY = centerY(investigation) - 16;
+  const query: Point[] = wrapped ? [
+    [right(investigation), querySourceY], [queryX, querySourceY],
+    [queryX, queryY], [centerX(prometheus), queryY], [centerX(prometheus), prometheus.y],
+  ] : [
+    [queryX, investigation.y], [queryX, queryY], [centerX(prometheus), queryY], [centerX(prometheus), bottom(prometheus)],
+  ];
+
+  const routes: Readonly<Record<string, readonly Point[]>> = {
+    'r1-prom': scrape(r1, centerY(prometheus) - 12),
+    'r2-prom': scrape(r2, centerY(prometheus) + 12),
     'prom-alert': horizontalFlow(prometheus, alertmanager),
     'alert-backend': webhookFlow,
-    'alert-email': `M${centerX(alertmanager)} ${bottom(alertmanager)} V${email.y}`,
+    'alert-email': [[centerX(alertmanager), bottom(alertmanager)], [centerX(email), email.y]],
     'backend-alerts': horizontalFlow(backend, alerts),
     'alerts-incident': horizontalFlow(alerts, incident),
-    'incident-inv': `M${right(incident)} ${centerY(incident)} H${outsideRight} V${centerY(investigation)} H${right(investigation)}`,
+    'incident-inv': [
+      [right(incident), centerY(incident)], [outsideRight, centerY(incident)],
+      [outsideRight, centerY(investigation)], [right(investigation), centerY(investigation)],
+    ],
     'inv-evidence': horizontalFlow(investigation, evidence),
     'evidence-ai': horizontalFlow(evidence, ai),
-    'ai-mcp': mcpFlow,
+    'ai-mcp': wrapped ? [[centerX(ai), bottom(ai)], [centerX(mcp), mcp.y]] : horizontalFlow(ai, mcp),
     'backend-db': toHubFromAbove(backend),
     'alerts-db': toHubFromAbove(alerts),
     'incident-db': toHubFromAbove(incident, incident.x + 37),
     'investigation-db': toHubFromBelow(investigation),
     'evidence-db': toHubFromBelow(evidence),
     'ai-db': toHubFromBelow(ai),
-    'mcp-db': toHubFromBelow(mcp, wrapped ? mcp.x + 12 : centerX(mcp)),
-    [simulationQueryEdge.id]: queryPath,
+    'mcp-db': wrapped ? [[mcp.x, centerY(mcp)], [4, centerY(mcp)], [4, centerY(db)], [db.x, centerY(db)]] : toHubFromBelow(mcp),
+    [simulationQueryEdge.id]: query,
   };
 
   const placements: Readonly<Record<string, NodeRect>> = nodes;
-  return { width, height, nodes: placements, paths };
+  const paths = Object.fromEntries(Object.entries(routes).map(([id, points]) => [id, roundedPath(points)]));
+  return { width, height, nodes: placements, paths, routes };
 }
 
 export function createDashboardLayouts() {

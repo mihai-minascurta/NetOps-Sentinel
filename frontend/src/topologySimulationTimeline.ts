@@ -97,23 +97,25 @@ export function getSimulationTimeline(router: RouterId, fault: FaultId, random?:
   return { steps, durationMs: cursor, log: buildSimulationLog(steps, router, fault, collectors, random) };
 }
 
-export function getSimulationFrame(timeline: SimulationTimeline | null, elapsedMs: number) {
+export function getSimulationFrame(timeline: SimulationTimeline | null, elapsed: number) {
   if (!timeline) return null;
 
+  const elapsedMs = Math.min(elapsed, timeline.durationMs);
   const nextLogIndex = timeline.log.findIndex(({ atMs }) => atMs > elapsedMs);
   const logEntries = nextLogIndex < 0 ? timeline.log : timeline.log.slice(0, nextLogIndex);
   const nextLogAtMs = timeline.log[nextLogIndex]?.atMs;
   const visitedNodes = new Set<string>();
   const visitedEdges = new Set<string>();
-  const completedSteps = new Set<SimulationStepId>();
+  const completedSteps = new Map<SimulationStepId, SimulationStep>();
+  const progress = { elapsedMs, visitedNodes, visitedEdges, completedSteps, logEntries, nextLogAtMs };
   for (const step of timeline.steps) {
-    if (elapsedMs < step.endsAtMs) return { visitedNodes, visitedEdges, completedSteps, current: step, logEntries, nextLogAtMs };
+    if (elapsedMs < step.endsAtMs) return { ...progress, current: step };
 
-    completedSteps.add(step.id);
+    completedSteps.set(step.id, step);
     for (const { edgeId, to } of step.moves) {
       visitedEdges.add(edgeId);
       visitedNodes.add(to);
     }
   }
-  return { visitedNodes, visitedEdges, completedSteps, current: null, logEntries, nextLogAtMs };
+  return { ...progress, current: null };
 }

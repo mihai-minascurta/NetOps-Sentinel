@@ -12,13 +12,13 @@ function faultLabel(id: FaultId) {
 
 type Props = {
   id: string;
+  open: boolean;
   state: SimulationState;
-  progress: string | null;
   onAction: (action: SimulationAction) => void;
   onClose: () => void;
 };
 
-export default function DashboardSimulationControls({ id, state, progress, onAction, onClose }: Props) {
+export default function DashboardSimulationControls({ id, open, state, onAction, onClose }: Props) {
   const panel = useRef<HTMLElement>(null);
   const stopButton = useRef<HTMLButtonElement>(null);
   const running = state.phase === 'running';
@@ -27,13 +27,13 @@ export default function DashboardSimulationControls({ id, state, progress, onAct
   const choice = running ? state.scenario : setup?.mode === 'custom' ? setup : null;
 
   useEffect(() => {
-    panel.current?.focus();
-  }, []);
+    if (open) panel.current?.focus();
+  }, [open]);
 
   return (
     <section ref={panel} id={id} className="dash-panel dash-simulation" tabIndex={-1} aria-labelledby={`${id}-title`}>
       <div className="dash-simulation__heading">
-        <h2 id={`${id}-title`}>Incident simulator</h2>
+        <h2 className="dash-section-title" id={`${id}-title`}>Simulator</h2>
         <button className="dash-simulation__close" type="button" aria-label="Close simulation controls" onClick={onClose}>
           <X size={16} aria-hidden="true" />
         </button>
@@ -46,7 +46,7 @@ export default function DashboardSimulationControls({ id, state, progress, onAct
           disabled={running}
           onClick={() => onAction({ type: 'configure', setup: { mode: 'random' } })}
         >
-          <Shuffle size={18} aria-hidden="true" />
+          <Shuffle size={14} aria-hidden="true" />
           Random
         </button>
         <button
@@ -59,7 +59,7 @@ export default function DashboardSimulationControls({ id, state, progress, onAct
             }
           }}
         >
-          <SlidersHorizontal size={18} aria-hidden="true" />
+          <SlidersHorizontal size={14} aria-hidden="true" />
           Custom
         </button>
       </div>
@@ -83,6 +83,7 @@ export default function DashboardSimulationControls({ id, state, progress, onAct
             <span>Fault</span>
             <select
               value={choice.fault}
+              title={faultLabel(choice.fault)}
               disabled={running}
               onChange={(event) => {
                 const fault = simulationFaultIds.find((id) => id === event.currentTarget.value);
@@ -98,8 +99,6 @@ export default function DashboardSimulationControls({ id, state, progress, onAct
       <output className="dash-simulation__choice">
         {running && mode === 'random' && `${state.scenario.router.toUpperCase()} · ${faultLabel(state.scenario.fault)}`}
       </output>
-      <output className="dash-simulation__progress">{progress}</output>
-
       <div className="dash-simulation__actions">
         <button
           className="dash-simulation__start"

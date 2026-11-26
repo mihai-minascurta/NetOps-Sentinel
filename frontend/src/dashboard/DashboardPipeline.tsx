@@ -1,6 +1,6 @@
 import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
-  Activity, Bell, BrainCircuit, ClipboardList, Database, FileText,
+  Activity, Bell, BrainCircuit, Check, ClipboardList, Database, FileText,
   ListChecks, Mail, Search, Server, Webhook, Wrench, type LucideIcon,
 } from 'lucide-react';
 import MovingPulse from '../components/MovingPulse';
@@ -8,6 +8,7 @@ import { simulationQueryEdge, type DeviceKind, type EdgeActivity } from '../topo
 import type { getSimulationFrame } from '../topologySimulationTimeline';
 import { createDashboardLayouts } from './dashboardLayout';
 import type { DashboardPipelineData, DashboardRouter } from './dashboardSample';
+import { getDashboardRouterTone } from './dashboardSimulation';
 
 const nodeIcons: Record<DeviceKind, LucideIcon> = {
   router: Server,
@@ -30,6 +31,8 @@ type Props = {
   simulationActive: boolean;
   simulationFrame: ReturnType<typeof getSimulationFrame>;
   edgeActivities: ReadonlyMap<string, EdgeActivity>;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
 };
 
 const queryEdge = {
@@ -39,13 +42,12 @@ const queryEdge = {
   kind: 'query',
 } as const;
 
-export default function DashboardPipeline({ pipeline, routers, simulationActive, simulationFrame, edgeActivities }: Props) {
+export default function DashboardPipeline({ pipeline, routers, simulationActive, simulationFrame, edgeActivities, selectedId, onSelect }: Props) {
   const marker = useId();
   const viewportRef = useRef<HTMLDivElement>(null);
   const layouts = useMemo(() => createDashboardLayouts(), []);
   const [variant, setVariant] = useState<'compact' | 'wide'>('compact');
   const activeVariant = useRef<'compact' | 'wide'>('compact');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
@@ -85,13 +87,13 @@ export default function DashboardPipeline({ pipeline, routers, simulationActive,
         >
           <defs>
             <linearGradient id={`${marker}-beam`}>
-              <stop offset="0%" stopColor="var(--dash-beam-orange)" stopOpacity="0" />
-              <stop offset="50%" stopColor="var(--dash-beam-orange)" stopOpacity=".85" />
-              <stop offset="83%" stopColor="var(--dash-beam-gold)" />
-              <stop offset="100%" stopColor="var(--dash-beam-core)" />
+              <stop offset="0%" stopColor="var(--dash-pulse-red)" stopOpacity="0" />
+              <stop offset="48%" stopColor="var(--dash-pulse-red)" stopOpacity=".88" />
+              <stop offset="80%" stopColor="var(--dash-pulse-light)" />
+              <stop offset="100%" stopColor="var(--dash-pulse-core)" />
             </linearGradient>
-            {['idle', 'current', 'visited'].map((phase) => (
-              <marker key={phase} id={`${marker}-${phase}`} markerUnits="userSpaceOnUse" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto-start-reverse">
+            {['idle', 'data', 'current', 'visited'].map((phase) => (
+              <marker key={phase} id={`${marker}-${phase}`} markerUnits="userSpaceOnUse" markerWidth="6" markerHeight="6" viewBox="0 0 7 7" refX="6" refY="3.5" orient="auto-start-reverse">
                 <path className="dash-arrow" data-playback={phase} d="M0 0.5 L6 3.5 L0 6.5 Z" />
               </marker>
             ))}
@@ -100,7 +102,7 @@ export default function DashboardPipeline({ pipeline, routers, simulationActive,
             {visibleEdges.map((edge) => {
               const move = currentMoves.find(({ edgeId }) => edgeId === edge.id);
               const phase = move ? 'current' : simulationFrame?.visitedEdges.has(edge.id) ? 'visited' : 'idle';
-              const arrow = `url(#${marker}-${phase})`;
+              const arrow = `url(#${marker}-${phase === 'idle' && edge.kind === 'data' ? 'data' : phase})`;
 
               return (
                 <path
@@ -112,8 +114,8 @@ export default function DashboardPipeline({ pipeline, routers, simulationActive,
                   data-playback={phase}
                   className="dash-wire"
                   d={layout.paths[edge.id]}
-                  markerStart={move?.reverse ? arrow : undefined}
-                  markerEnd={!move?.reverse && (move || edge.kind !== 'data') ? arrow : undefined}
+                  markerStart={edge.kind === 'data' || move?.reverse ? arrow : undefined}
+                  markerEnd={edge.kind === 'data' || !move?.reverse ? arrow : undefined}
                 />
               );
             })}
@@ -128,9 +130,9 @@ export default function DashboardPipeline({ pipeline, routers, simulationActive,
                 durationMs={pulse.durationMs}
                 reverse={pulse.reverse}
               >
-                <g className="dash-pulse__light" transform={edge.kind === 'flow' ? undefined : 'scale(.75)'}>
-                  <path d="M-28 0 Q-13 -5 0 -4.5 C7 -4 7 4 0 4.5 Q-13 5 -28 0Z" fill={`url(#${marker}-beam)`} />
-                  <path className="dash-pulse__core" d="M-9 0 H2" />
+                <g className="dash-pulse__light" transform={edge.kind === 'flow' ? undefined : 'scale(.8)'}>
+                  <path d="M-38 0 Q-20 -6.6 0 -6 C9 -5.5 9 5.5 0 6 Q-20 6.6 -38 0Z" fill={`url(#${marker}-beam)`} />
+                  <path className="dash-pulse__core" d="M-12 0 H4" />
                 </g>
               </MovingPulse>
             )) ?? [])}
@@ -140,7 +142,7 @@ export default function DashboardPipeline({ pipeline, routers, simulationActive,
             const selected = node.id === selectedId;
             const router = routers.find(({ id }) => id === node.id);
             const status = simulationActive && router ? router.fault?.badge ?? router.health.label.toUpperCase() : undefined;
-            const tone = simulationActive && router ? router.fault?.severity ?? router.health.tone : undefined;
+            const tone = router && getDashboardRouterTone(router);
             const label = router && [node.title, router.health.label, router.fault?.badge].filter(Boolean).join(', ');
             const current = simulationFrame?.current?.currentNodeIds.includes(node.id);
             const visited = simulationFrame?.visitedNodes.has(node.id);
@@ -152,22 +154,34 @@ export default function DashboardPipeline({ pipeline, routers, simulationActive,
                   type="button"
                   data-node-id={node.id}
                   data-kind={node.kind}
-                  data-simulation-tone={tone}
+                  data-router-tone={tone}
                   data-visited={visited || undefined}
                   aria-label={label}
                   aria-current={current ? 'step' : undefined}
                   aria-pressed={selected}
-                  onClick={() => setSelectedId(selected ? null : node.id)}
+                  onClick={() => onSelect(node.id)}
                 >
-                  <Icon aria-hidden="true" />
+                  <Icon className="dash-node__icon" size={19} aria-hidden="true" />
                   <span className="dash-node__text">
                     <span className="dash-node__name">
                       {node.title}
-                      {router && <i className="dash-indicator" data-tone={router.health.tone} aria-hidden="true" />}
                     </span>
-                    {status && <span className="dash-node__status" data-tone={tone}>{status}</span>}
+                    {status && <span className="dash-node__status">{status}</span>}
                     {node.subtitle && <span className="dash-node__subtitle">{node.subtitle}</span>}
                   </span>
+                  {router && (
+                    <span className="dash-node__server" aria-hidden="true">
+                      <Server size={17} />
+                      <i /><i />
+                    </span>
+                  )}
+                  {node.id === 'prometheus' && (
+                    <svg className="dash-node__wave" viewBox="0 0 33 18" aria-hidden="true">
+                      <path d="M1 10H7L10 6L14 13L18 4L22 11L25 8H32" />
+                    </svg>
+                  )}
+                  {node.kind === 'database' && <Database className="dash-node__database-art" aria-hidden="true" />}
+                  {visited && <Check className="dash-node__visited" size={12} aria-hidden="true" />}
                 </button>
               </foreignObject>
             );

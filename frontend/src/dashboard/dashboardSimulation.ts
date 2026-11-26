@@ -1,79 +1,50 @@
-import type { RouterId } from '../topology.ts';
 import {
-  getSimulationMeasurements, simulationCollectorOrder, simulationFaults, type FaultId, type SimulationState,
+  getSimulationIncidentNumber, getSimulationMeasurements, simulationFaults, type SimulationState,
 } from '../topologySimulation.ts';
-import type { getSimulationFrame } from '../topologySimulationTimeline.ts';
-import type { DashboardRouter, DashboardSample } from './dashboardSample.ts';
+import type { getSimulationFrame, SimulationStepId } from '../topologySimulationTimeline.ts';
+import {
+  dashboardCollectors, dashboardFaultDetails, incidentAvailabilityTrend, incidentMetricTrend,
+  type DashboardActivityEntry, type DashboardDiagnosisData, type DashboardEvidence, type DashboardIncident,
+  type DashboardRouter, type DashboardSample,
+} from './dashboardSample.ts';
 
-type Diagnosis = DashboardSample['diagnosis'];
-type Panels = Pick<DashboardSample, 'activity' | 'incidents'> & { diagnosis: Diagnosis | null };
+type Panels = Pick<DashboardSample, 'activity' | 'incidents' | 'evidence'> & {
+  diagnosis: DashboardDiagnosisData | null;
+  diagnosisIncidentNumber: number | null;
+};
 
-const emptyPanels: Panels = { activity: [], incidents: [], diagnosis: null };
+const emptyPanels: Panels = {
+  activity: [],
+  incidents: [],
+  diagnosis: null,
+  diagnosisIncidentNumber: null,
+  evidence: dashboardCollectors.map((collector) => ({ ...collector, status: 'pending' })),
+};
 
-const faultDetails = {
-  cpu_usage: {
-    title: 'High CPU usage',
-    diagnosis: {
-      probable_cause: 'CPU demand stayed above the configured alert threshold.',
-      confidence: 'medium',
-      recommendations: ['Review which processes are using the most CPU.', 'Compare CPU demand with the normal baseline.'],
-    },
-  },
-  memory_usage: {
-    title: 'High memory usage',
-    diagnosis: {
-      probable_cause: 'Low available memory triggered the HighRAMUsage alert.',
-      confidence: 'medium',
-      recommendations: ['Review which processes are using the most memory.', 'Check how available memory changes over time.'],
-    },
-  },
-  disk_usage: {
-    title: 'High root disk usage',
-    diagnosis: {
-      probable_cause: 'The root filesystem had less free space than the alert allows.',
-      confidence: 'medium',
-      recommendations: ['Inspect disk usage by directory on the root filesystem.', 'Review recent growth in logs and stored data.'],
-    },
-  },
-  network_interfaces: {
-    title: 'Network interface down',
-    diagnosis: {
-      probable_cause: 'The eth1 link or its configured state may explain the interface being down.',
-      confidence: 'low',
-      recommendations: ['Verify whether eth1 is expected to be active.', 'Check the peer link and recent interface events.'],
-    },
-  },
-  network_errors: {
-    title: 'Network errors',
-    diagnosis: {
-      probable_cause: 'An interface or its peer may be contributing to the RX/TX errors.',
-      confidence: 'low',
-      recommendations: ['Compare RX and TX error counters by interface.', 'Check the peer counters over the same time window.'],
-    },
-  },
-  prometheus_up: {
-    title: 'Node Exporter unavailable',
-    diagnosis: {
-      probable_cause: 'The exporter or the network path from Prometheus may be unavailable.',
-      confidence: 'low',
-      recommendations: ['Check the Node Exporter service status.', 'Verify reachability from the Prometheus host.'],
-    },
-  },
-} satisfies Record<FaultId, { title: string; diagnosis: Omit<Diagnosis, 'summary' | 'evidence_ids'> }>;
+const activityKinds: Partial<Record<SimulationStepId, DashboardActivityEntry['kind']>> = {
+  scrape: 'anomaly',
+  'send-alert': 'alert',
+  group: 'alert',
+  deliver: 'alert',
+  'insert-alert': 'alert',
+  'commit-incident': 'incident',
+  'read-evidence': 'ai',
+  'save-diagnosis': 'ai',
+};
 
-function simulateDiagnosis(router: RouterId, fault: FaultId, evidenceIds: readonly number[]): Diagnosis {
-  const name = router.toUpperCase();
-  const { cpu, memory, disk, networkErrors } = getSimulationMeasurements(router, fault);
-  const summaries: Record<FaultId, string> = {
-    cpu_usage: `${name} CPU usage reached ${cpu}%.`,
-    memory_usage: `${name} RAM usage reached ${memory}%.`,
-    disk_usage: `${name} root disk usage reached ${disk}%.`,
-    network_interfaces: `${name} reports interface eth1 down.`,
-    network_errors: `${name} reports ${networkErrors} network errors per second.`,
-    prometheus_up: `Prometheus could not scrape Node Exporter on ${name}.`,
-  };
+const activityTime = new Intl.DateTimeFormat('en-GB', {
+  hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+});
 
-  return { ...faultDetails[fault].diagnosis, summary: summaries[fault], evidence_ids: evidenceIds };
+function formatIncidentAge(ageMs: number) {
+  const seconds = Math.floor(ageMs / 1000);
+  if (seconds < 1) return 'just now';
+  return seconds < 60 ? `${seconds}s ago` : `${Math.floor(seconds / 60)}m ago`;
+}
+
+export function getDashboardRouterTone({ health, fault, ram }: DashboardRouter) {
+  if (fault || health.label === 'Down') return 'critical';
+  return ram.value !== null && ram.value > 85 ? 'warning' : 'ok';
 }
 
 export function getDashboardRouters(routers: readonly DashboardRouter[], simulation: SimulationState) {
@@ -111,29 +82,59 @@ export function getDashboardSimulationPanels(
   if (simulation.phase === 'idle') return sample;
   if (simulation.phase !== 'running' || !frame) return emptyPanels;
 
-  const { logEntries: activity, completedSteps } = frame;
-  if (!completedSteps.has('commit-incident')) return { ...emptyPanels, activity };
-
+  const { logEntries, completedSteps, elapsedMs } = frame;
   const { router, fault } = simulation.scenario;
-  const savedChecks = simulationCollectorOrder.filter((check) => completedSteps.has(`save:${check}`));
-  const evidenceIds = savedChecks.flatMap((check, index) => check === 'prometheus_up' || check === fault ? [index + 1] : []);
+  const number = getSimulationIncidentNumber(router, fault);
+  const startedAt = Date.parse(simulation.startedAt);
+  const activity = logEntries.map<DashboardActivityEntry>(({ id, stepId, atMs, message }) => {
+    const time = new Date(startedAt + atMs);
+    const kind = activityKinds[stepId] ?? 'investigation';
+    return { id, kind, time: activityTime.format(time), dateTime: time.toISOString(), message, incidentNumber: kind === 'incident' ? number : undefined };
+  });
+  const committed = completedSteps.get('commit-incident');
+  if (!committed) return { ...emptyPanels, activity };
+
+  const shouldSkip = fault === 'prometheus_up' && completedSteps.has('save:prometheus_up');
+  const evidence = dashboardCollectors.map<DashboardEvidence>((collector) => {
+    if (completedSteps.has(`save:${collector.id}`)) {
+      return { ...collector, status: collector.id === fault ? 'fault' : 'collected' };
+    }
+    return { ...collector, status: shouldSkip ? 'skipped' : 'pending' };
+  });
+  const savedChecks = evidence.filter(({ status }) => status === 'collected' || status === 'fault');
+  const evidenceIds = savedChecks.flatMap(({ id }, index) => id === 'prometheus_up' || id === fault ? [index + 1] : []);
   const investigation = completedSteps.has('create-investigation') ? {
     status: completedSteps.has('complete-investigation') ? 'completed' as const : 'running' as const,
     evidenceCount: savedChecks.length,
-    skippedCount: fault === 'prometheus_up' && savedChecks.length > 0 ? simulationCollectorOrder.length - 1 : 0,
+    skippedCount: shouldSkip ? dashboardCollectors.length - 1 : 0,
   } : undefined;
+  const details = dashboardFaultDetails[fault];
+  const { metric } = details;
+  const measurements = getSimulationMeasurements(router, fault);
+  const sparkline = metric === null
+    ? incidentAvailabilityTrend
+    : incidentMetricTrend.map((fraction) => fraction * measurements[metric]);
+  const incident: DashboardIncident = {
+    id: number,
+    title: details.title,
+    severity: simulationFaults[fault].severity,
+    router,
+    age: formatIncidentAge(elapsedMs - committed.endsAtMs),
+    status: investigation ? 'investigating' : 'open',
+    investigation,
+    sparkline,
+  };
+  const diagnosis: DashboardDiagnosisData | null = completedSteps.has('save-diagnosis') ? {
+    ...details.diagnosis,
+    summary: details.insight(router.toUpperCase(), measurements),
+    evidence_ids: evidenceIds,
+  } : null;
 
   return {
     activity,
-    incidents: [{
-      id: `sim-${simulation.startedAt}`,
-      title: faultDetails[fault].title,
-      severity: simulationFaults[fault].severity,
-      router,
-      age: 'This run',
-      status: 'open',
-      investigation,
-    }],
-    diagnosis: completedSteps.has('save-diagnosis') ? simulateDiagnosis(router, fault, evidenceIds) : null,
+    incidents: [incident],
+    diagnosis,
+    diagnosisIncidentNumber: diagnosis ? number : null,
+    evidence,
   };
 }
