@@ -1,38 +1,94 @@
-# NetOps Sentinel
+<p align="center">
+  <img src="assets/flow.svg" alt="NetOps Sentinel: a router goes down and the alert travels through Prometheus, Alertmanager, the incident API and the engine to an AI diagnosis, then to a human who decides" width="100%">
+</p>
 
-Un laborator de rețea făcut de la zero, care **observă singur când ceva se strică** și ne spune ce s-a întâmplat probabil.
+**Simulator UI:** [netopssentinel.duckdns.org](https://netopssentinel.duckdns.org/) is the HTTP version of the interface, running as a simulator. The live version, connected to the real lab, is coming next.
 
-Am construit mașinile și rețeaua, le-am pus sub monitorizare, iar deasupra am făcut o aplicație care primește o alertă, o transformă într-un incident, strânge dovezi și cere unui model AI o părere. Toate cele șase milestone-uri sunt terminate.
+---
 
-## Cum funcționează, pe scurt
+A network lab built from scratch that **notices when something breaks** and tells you what probably happened. Two routers and two hosts sit under monitoring, and an app on top turns every alert into an incident, gathers evidence and asks an AI model for an opinion. All six milestones are done.
 
-Să zicem că routerul R1 se oprește. Iată ce se întâmplă:
+## How it works
 
-1. **Prometheus** vede că nu mai primește nimic de la R1 și ridică o alertă.
-2. **Alertmanager** o trimite aplicației noastre printr-un webhook.
-3. Aplicația o salvează și **deschide un incident**.
-4. Noi pornim o **investigație**: aplicația întreabă Prometheus cum stă routerul (e pornit? cât CPU, RAM și disc folosește? cum e rețeaua?) și păstrează răspunsurile ca **dovezi**.
-5. Un **model AI** citește dovezile și scrie ce crede că s-a întâmplat și ce ar merita verificat.
-6. Noi citim diagnosticul și **hotărâm ce facem**. AI-ul doar dă o părere, nu schimbă nimic în sistem.
+When a router goes down, **Prometheus** raises an alert and **Alertmanager** forwards it to the API. The API opens an **incident**, the **engine** collects evidence from Prometheus (status, CPU, RAM, disk, network) and an **AI model** reads it and suggests a likely cause.
 
-```mermaid
-flowchart LR
-    R[Routere<br/>R1, R2] --> P[Prometheus]
-    P --> AM[Alertmanager]
-    AM -->|webhook| API[API + incidente]
-    API --> E[Engine<br/>dovezi]
-    E -->|interoghează| P
-    E --> AI[Diagnostic AI]
-    AI --> ADM[Administrator]
+The AI is read-only. It gives an opinion and changes nothing in the system: **you decide.**
+
+## Stack
+
+| Layer | Tools |
+| --- | --- |
+| Lab | Ubuntu Server, KVM, QEMU, libvirt, virt-manager, LXC |
+| Monitoring | Docker, Prometheus, Alertmanager, Grafana, node_exporter |
+| App | Python, FastAPI, SQLite |
+| AI | An NVIDIA model (OpenAI-compatible API) and MCP tools |
+
+## Go deeper
+
+Each part of the backend has its own README.
+
+<table>
+<tr>
+<td width="38%" valign="top">
+<sub>Milestone 4</sub><br>
+<b><a href="incident_manager/README.md">Incidents and API</a></b><br>
+<code>incident_manager/README.md</code>
+</td>
+<td valign="top">How alerts arrive through the webhook, get stored in SQLite and move from <code>open</code> to <code>closed</code>.</td>
+</tr>
+<tr>
+<td width="38%" valign="top">
+<sub>Milestone 5</sub><br>
+<b><a href="incident_manager/investigation/investigation_README.md">Investigation Engine</a></b><br>
+<code>investigation/investigation_README.md</code>
+</td>
+<td valign="top">How the engine queries Prometheus about the affected router and saves the answers as evidence. It gathers facts and draws no conclusions.</td>
+</tr>
+<tr>
+<td width="38%" valign="top">
+<sub>Milestone 6</sub><br>
+<b><a href="incident_manager/AI_part/ai_README.md">AI Diagnosis</a></b><br>
+<code>AI_part/ai_README.md</code>
+</td>
+<td valign="top">How a model reads the evidence through read-only tools and proposes a probable cause with safe recommendations.</td>
+</tr>
+</table>
+
+## Run it
+
+```bash
+export NVIDIA_API_KEY="your-key"
+uvicorn incident_manager.main:app
 ```
 
-## Infrastructura de laborator
+Alertmanager posts alerts to `POST /webhook/alerts`, and the dashboards live in Grafana.
 
-Laboratorul are **două routere** (VM-uri Ubuntu Server) și **două calculatoare** (containere LXC), legate prin trei rețele virtuale libvirt:
+---
 
-- `default` are acces la internet;
-- `netops-lab` este legătura directă dintre cele două routere;
-- `lan-r1` și `lan-r2` sunt cele două LAN-uri, câte unul pentru fiecare router.
+<details>
+<summary><b>Milestones</b></summary>
+
+<br>
+
+- **M1, Virtual infrastructure:** Ubuntu Server machines on KVM, QEMU and libvirt, with separate management and lab networks.
+- **M2, Network engineering:** LANs, router configuration, static routing, packet analysis and dynamic protocols.
+- **M3, Observability:** Docker, Prometheus, Grafana and exporters, with dashboards and alerts for latency, packet loss, device availability and routing state.
+- **M4, Incidents and API:** alerts are received, saved in SQLite and tracked through `open → investigating → resolved → closed`.
+- **M5, Investigation Engine:** queries Prometheus about the affected router and stores the answers as evidence.
+- **M6, AI Diagnosis:** a model reads the evidence (read-only, through tools) and proposes a probable cause with safe recommendations.
+
+</details>
+
+<details>
+<summary><b>Lab network</b></summary>
+
+<br>
+
+Two routers (Ubuntu Server VMs) and two hosts (LXC containers), connected through three libvirt virtual networks:
+
+- `default` has internet access;
+- `netops-lab` is the direct link between the two routers;
+- `lan-r1` and `lan-r2` are the two LANs, one per router.
 
 ```mermaid
 flowchart TB
@@ -48,64 +104,33 @@ flowchart TB
     R2 ---|"LAN B · lan-r2 · 172.16.2.0/24"| HB
 ```
 
-| Mașină | Adrese | Rol |
-|---|---|---|
-| `netops-r1` | `enp1s0` 192.168.122.247, `enp7s0` 10.0.0.1/30, `enp8s0` 172.16.1.1/24 | Routerul LAN-ului A; știe că `172.16.2.0/24` se ajunge prin `10.0.0.2` |
-| `netops-r2` | `enp1s0` 192.168.122.195, `enp7s0` 10.0.0.2/30, `enp8s0` 172.16.2.1/24 | Routerul LAN-ului B; știe că `172.16.1.0/24` se ajunge prin `10.0.0.1` |
-| `host-r1` | `eth0` 172.16.1.10/24, gateway 172.16.1.1, DNS 8.8.8.8 | Calculatorul din LAN A |
-| `host-r2` | `eth0` 172.16.2.10/24, gateway 172.16.2.1, DNS 8.8.8.8 | Calculatorul din LAN B |
+| Machine | Addresses | Role |
+| --- | --- | --- |
+| `netops-r1` | `enp1s0` 192.168.122.247, `enp7s0` 10.0.0.1/30, `enp8s0` 172.16.1.1/24 | Router of LAN A; reaches `172.16.2.0/24` through `10.0.0.2` |
+| `netops-r2` | `enp1s0` 192.168.122.195, `enp7s0` 10.0.0.2/30, `enp8s0` 172.16.2.1/24 | Router of LAN B; reaches `172.16.1.0/24` through `10.0.0.1` |
+| `host-r1` | `eth0` 172.16.1.10/24, gateway 172.16.1.1, DNS 8.8.8.8 | Computer in LAN A |
+| `host-r2` | `eth0` 172.16.2.10/24, gateway 172.16.2.1, DNS 8.8.8.8 | Computer in LAN B |
 
-Ambele routere au `ip_forward=1`, ca să paseze pachetele mai departe, și `MASQUERADE` pe `enp1s0`, ca hosturile să poată ieși pe internet cu adresa routerului.
+Both routers have `ip_forward=1` to pass packets along, and `MASQUERADE` on `enp1s0` so the hosts can reach the internet through the router's address.
 
-**Ce se întâmplă când `host-r1` vorbește cu `host-r2`?** Pachetul pleacă spre gateway, adică R1. R1 are o rută statică spre `172.16.2.0/24` prin `10.0.0.2`, deci îl trimite lui R2, iar R2 îl predă direct în LAN B.
+When `host-r1` talks to `host-r2`, the packet goes to its gateway, R1. R1 has a static route to `172.16.2.0/24` through `10.0.0.2`, so it hands the packet to R2, which delivers it straight into LAN B.
 
-O mică atenție: adresele `192.168.122.x` vin prin DHCP și se pot schimba, restul sunt statice. Dacă se schimbă, trebuie actualizat dicționarul `ROUTERS` din `main.py`, altfel aplicația nu mai știe care alertă aparține cărui router.
+The `192.168.122.x` addresses come from DHCP and can change; everything else is static. If they change, update the `ROUTERS` dictionary in `main.py`, otherwise the app can no longer tell which alert belongs to which router.
 
-## Drumul proiectului
+</details>
 
-**M1 — Infrastructura virtuală.** Am montat laboratorul cu Ubuntu, KVM, QEMU, libvirt și virt-manager: mașini Ubuntu Server cu rețele separate pentru management și laborator.
+<details>
+<summary><b>Code layout</b></summary>
 
-**M2 — Network Engineering.** Am construit LAN-urile, am configurat routerele, am făcut rutare statică, am analizat pachete și am lucrat cu protocoale dinamice. Acum înțelegem și controlăm drumul pachetelor.
-
-**M3 — Observability & Monitoring.** Am pus Docker, Prometheus, Grafana și exporter-e care colectează informații din rețea. Avem dashboard-uri și alerte pentru latency, packet loss, disponibilitatea dispozitivelor și starea rutării.
-
-**M4 — Incidente și API.** Aplicația primește alertele, le salvează în SQLite și urmărește fiecare incident de la deschidere până la închidere (`open → investigating → resolved → closed`).
-
-**M5 — Investigation Engine.** Când pornim o investigație, Engine-ul întreabă Prometheus despre routerul afectat și salvează răspunsurile ca dovezi. Doar adună fapte, nu trage concluzii.
-
-**M6 — AI Diagnosis.** Un model AI citește dovezile (doar în citire, prin tool-uri) și propune o cauză probabilă, cu recomandări sigure.
-
-## Din ce e făcut
-
-- **Laborator:** Ubuntu Server, KVM, QEMU, libvirt, virt-manager, LXC
-- **Monitorizare:** Docker, Prometheus, Alertmanager, Grafana, node_exporter
-- **Aplicație:** Python, FastAPI, SQLite
-- **AI:** un model NVIDIA (API compatibil OpenAI) și MCP pentru tool-uri
-
-## Cum arată codul
+<br>
 
 ```
 incident_manager/
-├── main.py            # API-ul (FastAPI)
-├── database.py        # tot SQL-ul
-├── investigation/     # Engine-ul M5 (orchestrator + collectori Prometheus)
-├── AI_part/           # M6: agent, server MCP, interogări read-only
-└── data/incidents.db  # baza SQLite
+├── main.py            # the API (FastAPI)
+├── database.py        # all the SQL
+├── investigation/     # M5 engine (orchestrator + Prometheus collectors)
+├── AI_part/           # M6: agent, MCP server, read-only queries
+└── data/incidents.db  # SQLite database
 ```
 
-## Cum îl pornești
-
-```bash
-export NVIDIA_API_KEY="cheia-ta"
-uvicorn incident_manager.main:app
-```
-
-Alertmanager trimite alertele la `POST /webhook/alerts`, iar dashboard-urile le vezi în Grafana.
-
-## Vrei mai multe detalii?
-
-Aici e doar imaginea de ansamblu. Fiecare parte mare are propriul README:
-
-- **M4, baza de date și API:** [`incident_manager/README.md`](incident_manager/README.md)
-- **M5, Investigation Engine:** [`investigation_README.md`](incident_manager/investigation/investigation_README.md)
-- **M6, AI Diagnosis:** [`ai_README.md`](incident_manager/AI_part/ai_README.md)
+</details>
