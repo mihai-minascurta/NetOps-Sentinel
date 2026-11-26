@@ -1,5 +1,5 @@
 import type { RouterId } from './topology.ts';
-import { simulationFaults, type FaultId } from './topologySimulation.ts';
+import { getSimulationMeasurements, simulationFaults, type FaultId } from './topologySimulation.ts';
 import type { SimulationStep, SimulationStepId } from './topologySimulationTimeline.ts';
 
 export type SimulationLogEntry = {
@@ -9,27 +9,13 @@ export type SimulationLogEntry = {
   message: string;
 };
 
-export function createSimulationRandom(seed: number): () => number {
-  let state = seed >>> 0;
-  return () => {
-    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
-    return state / 4294967296;
-  };
-}
-
-function scenarioSeed(router: RouterId, fault: FaultId): number {
-  return [...`${router}-${fault}`].reduce((hash, char) => Math.imul(hash ^ char.charCodeAt(0), 16777619), 2166136261);
-}
-
-function describeChecks(router: string, fault: FaultId, random: () => number) {
-  const sample = (low: number, high: number) => Number((low + (high - low) * random()).toFixed(1));
-  const cpu = fault === 'cpu_usage' ? sample(92, 98) : sample(23, 42);
-  const memory = fault === 'memory_usage' ? sample(87, 92) : sample(52, 65);
-  const disk = fault === 'disk_usage' ? sample(87, 95) : sample(54, 69);
+function describeChecks(routerId: RouterId, fault: FaultId, random?: () => number) {
+  const router = routerId.toUpperCase();
+  const { cpu, memory, disk, networkErrors: errorsPerSecond } = getSimulationMeasurements(routerId, fault, random);
   const availability = fault === 'prometheus_up' ? `${router} is down (up is 0).` : `${router} is reachable.`;
   const networkInterface = `Interface eth1 on ${router} is ${fault === 'network_interfaces' ? 'down' : 'up'}.`;
   const networkErrors = fault === 'network_errors'
-    ? `${router} sees ${sample(1.1, 2)} network errors per second.`
+    ? `${router} sees ${errorsPerSecond} network errors per second.`
     : `${router} has no network errors.`;
 
   // The investigation's memory limit differs from the Prometheus alert threshold.
@@ -63,11 +49,11 @@ export function buildSimulationLog(
   router: RouterId,
   fault: FaultId,
   collectors: readonly FaultId[],
-  random = createSimulationRandom(scenarioSeed(router, fault)),
+  random?: () => number,
 ): SimulationLogEntry[] {
   const routerLabel = router.toUpperCase();
   const { alertname, evaluation } = simulationFaults[fault];
-  const { observations, findings } = describeChecks(routerLabel, fault, random);
+  const { observations, findings } = describeChecks(router, fault, random);
   const stepsById = new Map(steps.map((step) => [step.id, step]));
   const log: SimulationLogEntry[] = [];
 

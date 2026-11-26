@@ -1,42 +1,7 @@
-import { useEffect, useRef, type CSSProperties } from 'react';
+import type { CSSProperties } from 'react';
 import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath, type EdgeProps } from '@xyflow/react';
 import { entranceDelayByDevice, simulationQueryRoute, type TopologyEdgeType } from '../topology';
-
-function MovingPulse({ path, startsAt, durationMs, reverse, dataPulse }: {
-  path: string; startsAt: number; durationMs: number; reverse?: boolean; dataPulse: boolean;
-}) {
-  const motion = useRef<SVGAnimateMotionElement>(null);
-  const visibility = useRef<SVGSetElement>(null);
-  const scheduledStart = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (scheduledStart.current === startsAt) return;
-
-    const delay = (startsAt - performance.now()) / 1000;
-    if (delay <= -durationMs / 1000) return;
-
-    scheduledStart.current = startsAt;
-    motion.current?.beginElementAt(delay);
-    visibility.current?.beginElementAt(delay);
-  }, [startsAt, durationMs]);
-
-  const duration = `${durationMs}ms`;
-  return (
-    <g className={dataPulse ? 'topology-pulse topology-pulse--data' : 'topology-pulse'} visibility="hidden" aria-hidden="true">
-      <set ref={visibility} attributeName="visibility" to="visible" begin="indefinite" dur={duration} />
-      <animateMotion
-        ref={motion}
-        path={path}
-        begin="indefinite"
-        dur={duration}
-        calcMode={reverse ? 'linear' : undefined}
-        keyPoints={reverse ? '1;0' : undefined}
-        keyTimes={reverse ? '0;1' : undefined}
-      />
-      <circle r="5" />
-    </g>
-  );
-}
+import MovingPulse from './MovingPulse';
 
 export default function TopologyEdge({
   id,
@@ -97,11 +62,11 @@ export default function TopologyEdge({
       {data.activity?.pulses?.map((pulse) => (
         <MovingPulse
           key={pulse.id}
+          className={dotted ? 'topology-pulse topology-pulse--data' : 'topology-pulse'}
           path={path}
           startsAt={pulse.startsAt}
           durationMs={pulse.durationMs}
           reverse={pulse.reverse}
-          dataPulse={dotted}
         />
       ))}
       {label && (

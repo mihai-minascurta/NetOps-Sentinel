@@ -33,6 +33,32 @@ export const simulationCollectorOrder: readonly FaultId[] = [
   'prometheus_up', ...simulationFaultIds.filter((fault) => fault !== 'prometheus_up'),
 ];
 
+export function createSimulationRandom(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+}
+
+function scenarioSeed(router: RouterId, fault: FaultId | null): number {
+  return [...`${router}-${fault ?? 'healthy'}`].reduce((hash, char) => Math.imul(hash ^ char.charCodeAt(0), 16777619), 2166136261);
+}
+
+export function getSimulationMeasurements(
+  router: RouterId,
+  fault: FaultId | null,
+  random = createSimulationRandom(scenarioSeed(router, fault)),
+) {
+  const sample = (low: number, high: number) => Number((low + (high - low) * random()).toFixed(1));
+  return {
+    cpu: fault === 'cpu_usage' ? sample(92, 98) : sample(23, 42),
+    memory: fault === 'memory_usage' ? sample(87, 92) : sample(52, 65),
+    disk: fault === 'disk_usage' ? sample(87, 95) : sample(54, 69),
+    networkErrors: fault === 'network_errors' ? sample(1.1, 2) : 0,
+  };
+}
+
 type Scenario = { router: RouterId; fault: FaultId };
 type SimulationSetup = { mode: 'random' } | ({ mode: 'custom' } & Scenario);
 

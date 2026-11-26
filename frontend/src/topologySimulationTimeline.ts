@@ -105,13 +105,15 @@ export function getSimulationFrame(timeline: SimulationTimeline | null, elapsedM
   const nextLogAtMs = timeline.log[nextLogIndex]?.atMs;
   const visitedNodes = new Set<string>();
   const visitedEdges = new Set<string>();
+  const completedSteps = new Set<SimulationStepId>();
   for (const step of timeline.steps) {
-    if (elapsedMs < step.endsAtMs) return { visitedNodes, visitedEdges, current: step, logEntries, nextLogAtMs };
+    if (elapsedMs < step.endsAtMs) return { visitedNodes, visitedEdges, completedSteps, current: step, logEntries, nextLogAtMs };
 
+    completedSteps.add(step.id);
     for (const { edgeId, to } of step.moves) {
       visitedEdges.add(edgeId);
       visitedNodes.add(to);
     }
   }
-  return { visitedNodes, visitedEdges, current: null, logEntries, nextLogAtMs };
+  return { visitedNodes, visitedEdges, completedSteps, current: null, logEntries, nextLogAtMs };
 }

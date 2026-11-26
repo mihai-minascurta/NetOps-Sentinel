@@ -1,21 +1,24 @@
-import { edges, isRouterId, nodes, type DeviceKind, type RouterId } from '../topology';
+import { edges, nodes, type DeviceKind, type RouterId } from '../topology.ts';
 
 type RouterHealth = { label: 'Up' | 'Down'; tone: 'ok' | 'critical' };
-type Utilization = { value: number; tone?: 'warning' };
+type Utilization = { value: number | null; tone?: 'warning' };
+
+export type DashboardRouter = {
+  id: RouterId;
+  title: string;
+  health: RouterHealth;
+  cpu: Utilization;
+  ram: Utilization;
+  fault?: { badge: string; severity: 'warning' | 'critical' };
+};
 
 export type DashboardPipelineData = {
-  nodes: readonly { id: string; title: string; subtitle?: string; kind: DeviceKind; health?: RouterHealth }[];
+  nodes: readonly { id: string; title: string; subtitle?: string; kind: DeviceKind }[];
   edges: readonly { id: string; source: string; target: string; kind: 'flow' | 'data' }[];
 };
 
 export type DashboardSample = {
-  routers: readonly {
-    id: RouterId;
-    title: string;
-    health: RouterHealth;
-    cpu: Utilization;
-    ram: Utilization;
-  }[];
+  routers: readonly DashboardRouter[];
   pipeline: DashboardPipelineData;
   activity: readonly { id: number; message: string }[];
   incidents: readonly {
@@ -25,6 +28,7 @@ export type DashboardSample = {
     router: RouterId;
     age: string;
     status: 'open' | 'investigating' | 'resolved' | 'closed';
+    investigation?: { status: 'running' | 'completed'; evidenceCount: number; skippedCount: number };
   }[];
   diagnosis: {
     summary: string;
@@ -57,7 +61,6 @@ export const dashboardSample: DashboardSample = {
       title: node.data.title,
       subtitle: node.id === 'db' ? 'alerts · incidents · incident_alerts · investigations · evidences' : undefined,
       kind: node.data.kind,
-      health: isRouterId(node.id) ? routerHealth[node.id] : undefined,
     })),
     edges: edges.map((edge) => ({
       id: edge.id,

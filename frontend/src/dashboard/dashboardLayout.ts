@@ -1,3 +1,5 @@
+import { simulationQueryEdge } from '../topology.ts';
+
 type NodeRect = { x: number; y: number; width: number; height: number };
 
 const card = (x: number, y: number): NodeRect => ({ x, y, width: 190, height: 64 });
@@ -72,6 +74,10 @@ function placeEdges(template: typeof wide, wrapped: boolean) {
   const mcpFlow = wrapped
     ? `M${centerX(ai)} ${bottom(ai)} V${mcp.y - 12} H${centerX(mcp)} V${mcp.y}`
     : horizontalFlow(ai, mcp);
+  // Use the corridor beside the hub and approach Prometheus from the open side.
+  const queryPath = wrapped
+    ? `M${right(investigation)} ${centerY(investigation) - 16} H${outsideRight - 11} V${prometheus.y - 18} H${centerX(prometheus)} V${prometheus.y}`
+    : `M${right(investigation) - 36} ${investigation.y} V${db.y - 12} H${centerX(prometheus)} V${bottom(prometheus)}`;
 
   const paths: Readonly<Record<string, string>> = {
     'r1-prom': scrape(r1, prometheus.y + 20),
@@ -92,6 +98,7 @@ function placeEdges(template: typeof wide, wrapped: boolean) {
     'evidence-db': toHubFromBelow(evidence),
     'ai-db': toHubFromBelow(ai),
     'mcp-db': toHubFromBelow(mcp, wrapped ? mcp.x + 12 : centerX(mcp)),
+    [simulationQueryEdge.id]: queryPath,
   };
 
   const placements: Readonly<Record<string, NodeRect>> = nodes;

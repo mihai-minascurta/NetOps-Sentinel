@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createSimulationRandom } from '../src/topologySimulationLog.ts';
-import { getSimulationSnapshot, simulationCollectorOrder, transitionSimulation } from '../src/topologySimulation.ts';
+import { createSimulationRandom, getSimulationSnapshot, simulationCollectorOrder, transitionSimulation } from '../src/topologySimulation.ts';
 import { getSimulationFrame, getSimulationTimeline } from '../src/topologySimulationTimeline.ts';
 
 const examples = {
