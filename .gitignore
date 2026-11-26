@@ -1,9 +1,15 @@
-.venv/
-__pycache__/
-*.pyc
-*.db
-*.bak
+# Secrets
 .env
 .env.*
 !.env.example
 monitoring/secrets/
+
+# Local database
+*.db
+*.db-wal
+*.db-shm
+
+# Python environment
+.venv/
+
+
